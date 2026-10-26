@@ -29,7 +29,14 @@ import {
   Download,
 } from "lucide-react";
 
-type ChannelType = "linkedin" | "youtube" | "instagram" | "facebook" | "skool";
+type ChannelType =
+  | "linkedin"
+  | "linkedin_page"
+  | "twitter"
+  | "youtube"
+  | "instagram"
+  | "facebook"
+  | "skool";
 
 interface SlideItem {
   id: string;
@@ -161,11 +168,21 @@ export default function ContentDetailPage({
       } else if (assets.slides && assets.slides.length > 0) {
         setActiveMediaTab("slides");
       }
-    } else if (activeChannel === "linkedin") {
+    } else if (activeChannel === "linkedin" || activeChannel === "linkedin_page") {
       if (assets.slides && assets.slides.length > 0) {
         setActiveMediaTab("slides");
       } else if (assets.pdfs && assets.pdfs.length > 0) {
         setActiveMediaTab("pdf");
+      } else if (assets.hyperframesVideo || (assets.videos && assets.videos.length > 0)) {
+        setActiveMediaTab("video");
+      }
+    } else if (activeChannel === "twitter") {
+      if (assets.hyperframesVideo || (assets.videos && assets.videos.length > 0)) {
+        setActiveMediaTab("video");
+      } else if (assets.slides && assets.slides.length > 0) {
+        setActiveMediaTab("slides");
+      } else if (assets.coverFile) {
+        setActiveMediaTab("cover");
       }
     } else if (activeChannel === "instagram" || activeChannel === "facebook") {
       if (currentPostType === "reel" && (assets.hyperframesVideo || (assets.videos && assets.videos.length > 0))) {
@@ -421,7 +438,19 @@ export default function ContentDetailPage({
       // Check connections inside profile
       if (Array.isArray(p.connections) && p.connections.length > 0) {
         p.connections.forEach((conn: any) => {
-          if (conn.platform?.toLowerCase() === activeChannel.toLowerCase() && conn.isActive) {
+          const connPlatform = conn.platform?.toLowerCase();
+          let matches = false;
+          if (activeChannel === "linkedin_page") {
+            matches = connPlatform === "linkedin_page";
+          } else if (activeChannel === "linkedin") {
+            matches = connPlatform === "linkedin";
+          } else if (activeChannel === "twitter") {
+            matches = connPlatform === "twitter" || connPlatform === "x";
+          } else {
+            matches = connPlatform === activeChannel.toLowerCase();
+          }
+
+          if (matches && conn.isActive) {
             matchingProfiles.push({
               id: conn.id,
               profileId: conn.connectionId,
@@ -432,14 +461,28 @@ export default function ContentDetailPage({
             });
           }
         });
-      } else if (p.platform?.toLowerCase() === activeChannel.toLowerCase()) {
-        matchingProfiles.push({
-          id: p.id,
-          profileId: p.profileId,
-          profileName: p.profileName || `${acc.name} - ${p.platform}`,
-          accountName: acc.name,
-          avatar: p.profileAvatar,
-        });
+      } else {
+        const profPlatform = p.platform?.toLowerCase();
+        let matches = false;
+        if (activeChannel === "linkedin_page") {
+          matches = profPlatform === "linkedin_page";
+        } else if (activeChannel === "linkedin") {
+          matches = profPlatform === "linkedin";
+        } else if (activeChannel === "twitter") {
+          matches = profPlatform === "twitter" || profPlatform === "x";
+        } else {
+          matches = profPlatform === activeChannel.toLowerCase();
+        }
+
+        if (matches) {
+          matchingProfiles.push({
+            id: p.id,
+            profileId: p.profileId,
+            profileName: p.profileName || `${acc.name} - ${p.platform}`,
+            accountName: acc.name,
+            avatar: p.profileAvatar,
+          });
+        }
       }
     });
   });
@@ -515,7 +558,7 @@ export default function ContentDetailPage({
                   onClick={() => {
                     if (
                       confirm(
-                        `Publish this content across all configured social channels (YouTube, LinkedIn, Instagram, Facebook)?`
+                        `Publish this content across all configured social channels (YouTube, LinkedIn, LinkedIn Page, X, Instagram, Facebook)?`
                       )
                     ) {
                       publishAllMutation.mutate();
@@ -585,7 +628,9 @@ export default function ContentDetailPage({
       <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-800/80 scrollbar-none">
         {(
           [
-            { id: "linkedin", name: "LinkedIn", badge: "PDF / Video" },
+            { id: "linkedin", name: "LinkedIn", badge: "Personal" },
+            { id: "linkedin_page", name: "LinkedIn Page", badge: "Business" },
+            { id: "twitter", name: "X (Twitter)", badge: "Post" },
             { id: "youtube", name: "YouTube", badge: "Shorts / Video" },
             { id: "instagram", name: "Instagram", badge: "Reel / Carousel" },
             { id: "facebook", name: "Facebook", badge: "Reel / Feed" },
@@ -1014,8 +1059,15 @@ export default function ContentDetailPage({
             {/* Channel header & status badge */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-white capitalize">
-                  {activeChannel} Post Configuration
+                <span className="text-sm font-semibold text-white">
+                  {activeChannel === "linkedin_page"
+                    ? "LinkedIn Business Page"
+                    : activeChannel === "twitter"
+                    ? "X (Twitter)"
+                    : activeChannel === "linkedin"
+                    ? "LinkedIn Personal"
+                    : activeChannel.charAt(0).toUpperCase() + activeChannel.slice(1)}{" "}
+                  Post Configuration
                 </span>
                 <span
                   className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
@@ -1061,7 +1113,9 @@ export default function ContentDetailPage({
             )}
 
             {/* Title field (where applicable) */}
-            {activeChannel !== "instagram" && activeChannel !== "facebook" && (
+            {activeChannel !== "instagram" &&
+              activeChannel !== "facebook" &&
+              activeChannel !== "twitter" && (
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-medium text-slate-300">
@@ -1098,16 +1152,18 @@ export default function ContentDetailPage({
               </div>
             )}
 
-            {/* Post Type Selector (Instagram / Facebook / LinkedIn) */}
+            {/* Post Type Selector (Instagram / Facebook / LinkedIn / LinkedIn Page / Twitter) */}
             {(activeChannel === "instagram" ||
               activeChannel === "facebook" ||
-              activeChannel === "linkedin") && (
+              activeChannel === "linkedin" ||
+              activeChannel === "linkedin_page" ||
+              activeChannel === "twitter") && (
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1.5">
                   Media / Publication Format
                 </label>
                 <div className="grid grid-cols-3 gap-2">
-                  {activeChannel === "linkedin" ? (
+                  {activeChannel === "linkedin" || activeChannel === "linkedin_page" ? (
                     <>
                       <button
                         type="button"
@@ -1130,6 +1186,42 @@ export default function ContentDetailPage({
                         }`}
                       >
                         📹 Video Post
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleFormChange("postType", "feed")}
+                        className={`py-2 px-3 rounded-xl text-xs font-medium border text-center transition-all ${
+                          currentForm.postType === "feed"
+                            ? "bg-indigo-600/20 text-indigo-300 border-indigo-500"
+                            : "bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700"
+                        }`}
+                      >
+                        📝 Text Only
+                      </button>
+                    </>
+                  ) : activeChannel === "twitter" ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleFormChange("postType", "video")}
+                        className={`py-2 px-3 rounded-xl text-xs font-medium border text-center transition-all ${
+                          currentForm.postType === "video"
+                            ? "bg-indigo-600/20 text-indigo-300 border-indigo-500"
+                            : "bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700"
+                        }`}
+                      >
+                        📹 Video Post
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleFormChange("postType", "carousel")}
+                        className={`py-2 px-3 rounded-xl text-xs font-medium border text-center transition-all ${
+                          currentForm.postType === "carousel"
+                            ? "bg-indigo-600/20 text-indigo-300 border-indigo-500"
+                            : "bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700"
+                        }`}
+                      >
+                        🖼️ Image / Slides
                       </button>
                       <button
                         type="button"
@@ -1192,12 +1284,38 @@ export default function ContentDetailPage({
                 <label className="text-xs font-medium text-slate-300">
                   {activeChannel === "youtube"
                     ? "Video Description"
+                    : activeChannel === "twitter"
+                    ? "Tweet / Post Content"
                     : "Post Content / Caption"}
                 </label>
                 <div className="flex items-center gap-3">
-                  <span className="text-[11px] text-slate-500">
-                    {currentForm.body.length} characters
-                  </span>
+                  {activeChannel === "twitter" ? (
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`text-[11px] font-mono font-medium ${
+                          currentForm.body.length > 280
+                            ? "text-amber-400 font-semibold"
+                            : currentForm.body.length > 250
+                            ? "text-amber-300"
+                            : "text-slate-400"
+                        }`}
+                      >
+                        {currentForm.body.length}/280 chars
+                      </span>
+                      {currentForm.body.length > 280 && (
+                        <span
+                          className="text-[10px] text-amber-400/80 cursor-help"
+                          title="Standard X limit is 280 characters. Over 280 chars requires X Premium subscription."
+                        >
+                          (X Premium)
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-slate-500">
+                      {currentForm.body.length} characters
+                    </span>
+                  )}
                   {activeChannel === "skool" && (
                     <button
                       onClick={() => copyToClipboard(currentForm.body, "body")}
@@ -1255,7 +1373,7 @@ export default function ContentDetailPage({
                   </select>
                 ) : (
                   <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center justify-between">
-                    <span>No active connected {activeChannel} channel found in Zernio</span>
+                    <span>No active connected {activeChannel === "linkedin_page" ? "LinkedIn Page" : activeChannel === "twitter" ? "X (Twitter)" : activeChannel} channel found in Zernio</span>
                     <Link
                       href="/settings/zernio"
                       className="text-xs underline font-medium hover:text-white"
@@ -1297,7 +1415,11 @@ export default function ContentDetailPage({
                   )}
                   <span>
                     {currentPost?.status === "scheduled" ? "Re-queue to" : "Queue to"}{" "}
-                    {activeChannel}
+                    {activeChannel === "linkedin_page"
+                      ? "LinkedIn Page"
+                      : activeChannel === "twitter"
+                      ? "X"
+                      : activeChannel}
                   </span>
                 </button>
               ) : (

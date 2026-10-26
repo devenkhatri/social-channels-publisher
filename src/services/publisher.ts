@@ -83,9 +83,19 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
 
   const allConnections = await db.select().from(schema.zernioConnections);
   const allProfiles = await db.select().from(schema.zernioProfiles);
-  const matchingConnections = allConnections.filter(
-    (c) => c.platform.toLowerCase() === post.channel.toLowerCase() && c.isActive === 1
-  );
+  const matchingConnections = allConnections.filter((c) => {
+    const connPlatform = c.platform.toLowerCase();
+    if (post.channel === "linkedin_page") {
+      return (connPlatform === "linkedin_page" || connPlatform === "linkedin") && c.isActive === 1;
+    }
+    if (post.channel === "twitter" || post.channel === "x") {
+      return (connPlatform === "twitter" || connPlatform === "x") && c.isActive === 1;
+    }
+    if (post.channel === "linkedin") {
+      return connPlatform === "linkedin" && c.isActive === 1;
+    }
+    return connPlatform === post.channel.toLowerCase() && c.isActive === 1;
+  });
 
   let targetConnection: (typeof schema.zernioConnections.$inferSelect) | undefined;
 
@@ -116,6 +126,7 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
 
   let targetAccountId: string;
   let zernioApiProfileId: string | undefined;
+  const platformSpecificData: Record<string, any> = {};
 
   if (targetConnection) {
     targetAccountId = targetConnection.connectionId;
@@ -123,12 +134,21 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
     zernioProfileId = targetConnection.zernioProfileId;
     zernioConnectionId = targetConnection.id;
 
+    if (targetAccountId.includes("::")) {
+      const [baseId, orgUrn] = targetAccountId.split("::");
+      targetAccountId = baseId;
+      platformSpecificData.organizationUrn = orgUrn;
+    }
+
     const matchingProfile = allProfiles.find((p) => p.id === targetConnection!.zernioProfileId);
     zernioApiProfileId = matchingProfile?.profileId;
   } else {
     // Fallback to legacy zernioProfiles if any
     const legacyProfile = allProfiles.find(
-      (p) => p.id === zernioProfileId || p.platform.toLowerCase() === post.channel.toLowerCase()
+      (p) =>
+        p.id === zernioProfileId ||
+        p.platform.toLowerCase() === post.channel.toLowerCase() ||
+        (post.channel === "linkedin_page" && p.platform.toLowerCase() === "linkedin")
     );
     if (!legacyProfile) {
       throw new Error(
@@ -179,6 +199,9 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
   );
   const pdfFile = children.find((c) => !c.isFolder && /\.pdf$/i.test(c.name));
   const slidesFolder = children.find((c) => c.isFolder && /^slides$/i.test(c.name));
+  const coverFile = children.find(
+    (c) => !c.isFolder && /^cover\.(svg|png|jpg|webp)$/i.test(c.name)
+  );
 
   const uploadedMediaUrls: string[] = [];
   const mediaItems: ZernioMediaItem[] = [];
@@ -191,7 +214,7 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
 
   try {
     // 3. Media processing based on platform and post type
-    if (post.channel === "linkedin") {
+    if (post.channel === "linkedin" || post.channel === "linkedin_page") {
       if (post.postType === "document" || pdfFile) {
         const targetPdf = pdfFile;
         if (targetPdf) {
@@ -217,6 +240,105 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
           );
           uploadedMediaUrls.push(publicUrl);
           mediaItems.push({ type: "video", url: publicUrl });
+        }
+      } else if (post.postType === "carousel" && slidesFolder) {
+        const slideFiles = await listFolderChildren(slidesFolder.id);
+        const imageSlides = slideFiles.filter(
+          (f) => !f.isFolder && /\.(svg|png|jpg|jpeg|webp)$/i.test(f.name)
+        );
+        const sorted = sortSlidesNaturally(imageSlides);
+        for (const slide of sorted) {
+          if (slide.name.endsWith(".svg")) {
+            const svgText = await getFileContentAsText(slide.id, slide.downloadUrl);
+            const pngBuffer = rasterizeSvgToPng(svgText, { width: 1080 });
+            const { publicUrl } = await uploadMediaToZernio(
+              apiKey,
+              pngBuffer,
+              `${slide.name.replace(/\.svg$/, "")}.png`,
+              "image/png"
+            );
+            uploadedMediaUrls.push(publicUrl);
+            mediaItems.push({ type: "image", url: publicUrl });
+          } else {
+            const buffer = await getFileBuffer(slide.id, slide.downloadUrl);
+            const { publicUrl } = await uploadMediaToZernio(
+              apiKey,
+              buffer,
+              slide.name,
+              "image/png"
+            );
+            uploadedMediaUrls.push(publicUrl);
+            mediaItems.push({ type: "image", url: publicUrl });
+          }
+        }
+      }
+    } else if (post.channel === "twitter" || post.channel === "x") {
+      if (post.postType === "video" || (!post.postType && (hyperframesVideo || regularVideo))) {
+        const video = hyperframesVideo || regularVideo;
+        if (video) {
+          const buffer = await getFileBuffer(video.id, video.downloadUrl);
+          const { publicUrl } = await uploadMediaToZernio(
+            apiKey,
+            buffer,
+            video.name,
+            "video/mp4"
+          );
+          uploadedMediaUrls.push(publicUrl);
+          mediaItems.push({ type: "video", url: publicUrl });
+        }
+      } else if (slidesFolder) {
+        // Twitter allows up to 4 images
+        const slideFiles = await listFolderChildren(slidesFolder.id);
+        const imageSlides = slideFiles.filter(
+          (f) => !f.isFolder && /\.(svg|png|jpg|jpeg|webp)$/i.test(f.name)
+        );
+        const sorted = sortSlidesNaturally(imageSlides).slice(0, 4);
+        for (const slide of sorted) {
+          if (slide.name.endsWith(".svg")) {
+            const svgText = await getFileContentAsText(slide.id, slide.downloadUrl);
+            const pngBuffer = rasterizeSvgToPng(svgText, { width: 1080 });
+            const { publicUrl } = await uploadMediaToZernio(
+              apiKey,
+              pngBuffer,
+              `${slide.name.replace(/\.svg$/, "")}.png`,
+              "image/png"
+            );
+            uploadedMediaUrls.push(publicUrl);
+            mediaItems.push({ type: "image", url: publicUrl });
+          } else {
+            const buffer = await getFileBuffer(slide.id, slide.downloadUrl);
+            const { publicUrl } = await uploadMediaToZernio(
+              apiKey,
+              buffer,
+              slide.name,
+              "image/png"
+            );
+            uploadedMediaUrls.push(publicUrl);
+            mediaItems.push({ type: "image", url: publicUrl });
+          }
+        }
+      } else if (coverFile) {
+        if (coverFile.name.endsWith(".svg")) {
+          const svgText = await getFileContentAsText(coverFile.id, coverFile.downloadUrl);
+          const pngBuffer = rasterizeSvgToPng(svgText, { width: 1080 });
+          const { publicUrl } = await uploadMediaToZernio(
+            apiKey,
+            pngBuffer,
+            "cover.png",
+            "image/png"
+          );
+          uploadedMediaUrls.push(publicUrl);
+          mediaItems.push({ type: "image", url: publicUrl });
+        } else {
+          const buffer = await getFileBuffer(coverFile.id, coverFile.downloadUrl);
+          const { publicUrl } = await uploadMediaToZernio(
+            apiKey,
+            buffer,
+            coverFile.name,
+            "image/png"
+          );
+          uploadedMediaUrls.push(publicUrl);
+          mediaItems.push({ type: "image", url: publicUrl });
         }
       }
     } else if (post.channel === "youtube") {
@@ -303,6 +425,8 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
       mediaUrls: uploadedMediaUrls.length > 0 ? uploadedMediaUrls : undefined,
       postType: post.postType as any,
       queuedFromProfile: zernioApiProfileId,
+      platformSpecificData:
+        Object.keys(platformSpecificData).length > 0 ? platformSpecificData : undefined,
     };
 
     console.log("[Publisher] Sending payload to Zernio (queuing):", JSON.stringify(payload, null, 2));

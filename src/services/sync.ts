@@ -94,6 +94,9 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
     // Categorize files
     const captionFile = children.find((c) => !c.isFolder && /^caption\.md$/i.test(c.name));
     const linkedinFile = children.find((c) => !c.isFolder && /^linkedin(-post)?\.md$/i.test(c.name));
+    const twitterFile = children.find(
+      (c) => !c.isFolder && /^(twitter|tweet|x)(-post)?\.md$/i.test(c.name)
+    );
     const skoolFile = children.find((c) => !c.isFolder && /^skool(-post)?\.md$/i.test(c.name));
     const coverFile = children.find((c) => !c.isFolder && /^cover\.(svg|png|jpg|webp)$/i.test(c.name));
     const hyperframesVideo = children.find((c) => !c.isFolder && /-hyperframes\.mp4$/i.test(c.name));
@@ -120,6 +123,7 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
     // Read markdown files
     let captionText = "";
     let linkedinText = "";
+    let twitterText = "";
     let skoolText = "";
 
     try {
@@ -139,6 +143,14 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
     }
 
     try {
+      if (twitterFile) {
+        twitterText = await getFileContentAsText(twitterFile.id, twitterFile.downloadUrl);
+      }
+    } catch (err) {
+      console.warn(`Could not read twitter/x post for ${folder.name}:`, err);
+    }
+
+    try {
       if (skoolFile) {
         skoolText = await getFileContentAsText(skoolFile.id, skoolFile.downloadUrl);
       }
@@ -148,6 +160,7 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
 
     const captionExtract = extractTitleAndBody(captionText);
     const linkedinExtract = extractTitleAndBody(linkedinText);
+    const twitterExtract = extractTitleAndBody(twitterText);
     const skoolExtract = extractTitleAndBody(skoolText);
 
     // Primary title
@@ -205,8 +218,16 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
       newCount++;
     }
 
-    // Populate / update 5 channel posts
-    const channels = ["linkedin", "youtube", "instagram", "facebook", "skool"] as const;
+    // Populate / update 7 channel posts
+    const channels = [
+      "linkedin",
+      "linkedin_page",
+      "twitter",
+      "youtube",
+      "instagram",
+      "facebook",
+      "skool",
+    ] as const;
 
     for (const channel of channels) {
       const existingPosts = await db
@@ -226,7 +247,7 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
         let mediaType: string | null = null;
         let postType: string | null = "feed";
 
-        if (channel === "linkedin") {
+        if (channel === "linkedin" || channel === "linkedin_page") {
           postTitle = linkedinExtract.title || captionExtract.title || primaryTitle;
           postBody = linkedinExtract.body || captionExtract.body || "";
           if (pdfFile) {
@@ -238,6 +259,27 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
           } else if (sortedSlides.length > 0) {
             mediaType = "carousel";
             postType = "carousel";
+          }
+        } else if (channel === "twitter") {
+          postTitle = null;
+          postBody =
+            twitterExtract.body ||
+            twitterExtract.title ||
+            captionExtract.body ||
+            captionExtract.title ||
+            "";
+          if (hyperframesVideo || regularVideo) {
+            mediaType = "video";
+            postType = "video";
+          } else if (sortedSlides.length > 0) {
+            mediaType = "carousel";
+            postType = "carousel";
+          } else if (coverFile) {
+            mediaType = "cover";
+            postType = "feed";
+          } else {
+            mediaType = null;
+            postType = "feed";
           }
         } else if (channel === "youtube") {
           postTitle = captionExtract.title || primaryTitle;

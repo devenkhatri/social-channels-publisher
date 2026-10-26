@@ -248,8 +248,19 @@ export async function testZernioConnection(apiKey: string): Promise<{
         : aData?.accounts || aData?.data || [];
       connectionsCount = accountsList.length;
       accountsList.forEach((acc: any) => {
-        if (acc.platform && !channels.includes(acc.platform.toLowerCase())) {
-          channels.push(acc.platform.toLowerCase());
+        const rawPlatform = (acc.platform || "").toLowerCase();
+        const normPlatform = rawPlatform === "x" ? "twitter" : rawPlatform;
+        if (normPlatform && !channels.includes(normPlatform)) {
+          channels.push(normPlatform);
+        }
+        if (rawPlatform === "linkedin") {
+          const hasOrgs =
+            (Array.isArray(acc.metadata?.availableOrganizations) &&
+              acc.metadata.availableOrganizations.length > 0) ||
+            acc.metadata?.accountType === "organization";
+          if (hasOrgs && !channels.includes("linkedin_page")) {
+            channels.push("linkedin_page");
+          }
         }
       });
     }
@@ -375,12 +386,17 @@ export async function discoverProfiles(accountId: string): Promise<DiscoveryResu
       const connZernioId = String(acc._id || acc.id || acc.accountId);
       assignedAccountIds.add(connZernioId);
 
-      const platform = (
+      let platform = (
         acc.platform ||
         acc.provider ||
         acc.type ||
         "unknown"
       ).toLowerCase();
+      if (platform === "x") platform = "twitter";
+      if (platform === "linkedin" && acc.metadata?.accountType === "organization") {
+        platform = "linkedin_page";
+      }
+
       if (acc.isActive !== false) {
         discoveredChannels.add(platform);
       }
@@ -429,6 +445,48 @@ export async function discoverProfiles(accountId: string): Promise<DiscoveryResu
         followersCount,
       });
       insertedConnectionsCount++;
+
+      // Check for LinkedIn organization / company pages available to this account
+      if (
+        (platform === "linkedin" || platform === "linkedin_page") &&
+        Array.isArray(acc.metadata?.availableOrganizations) &&
+        acc.metadata.availableOrganizations.length > 0
+      ) {
+        for (const org of acc.metadata.availableOrganizations) {
+          const orgUrn = org.urn || (org.id ? `urn:li:organization:${org.id}` : "");
+          const compoundConnectionId = orgUrn
+            ? `${connZernioId}::${orgUrn}`
+            : `${connZernioId}::org-${org.id}`;
+          const orgDisplayName = `${org.name || "LinkedIn Page"} (Business Page)`;
+          const orgUsername = org.vanityName || (org.id ? String(org.id) : null);
+          const orgLogo = org.logoUrl || null;
+          const orgUrl = org.vanityName
+            ? `https://www.linkedin.com/company/${org.vanityName}`
+            : org.id
+            ? `https://www.linkedin.com/company/${org.id}`
+            : null;
+
+          await db.insert(schema.zernioConnections).values({
+            id: crypto.randomUUID(),
+            zernioAccountId: accountId,
+            zernioProfileId: profileInternalId,
+            connectionId: compoundConnectionId,
+            platform: "linkedin_page",
+            username: orgUsername,
+            displayName: orgDisplayName,
+            profilePicture: orgLogo,
+            profileUrl: orgUrl,
+            isActive: acc.isActive !== false ? 1 : 0,
+            platformStatus:
+              acc.platformStatus || (acc.isActive !== false ? "active" : "inactive"),
+            followersCount: null,
+          });
+          insertedConnectionsCount++;
+          if (acc.isActive !== false) {
+            discoveredChannels.add("linkedin_page");
+          }
+        }
+      }
     }
   }
 
@@ -453,7 +511,11 @@ export async function discoverProfiles(accountId: string): Promise<DiscoveryResu
 
     for (const acc of unassignedAccounts) {
       const connZernioId = String(acc._id || acc.id || acc.accountId);
-      const platform = (acc.platform || "unknown").toLowerCase();
+      let platform = (acc.platform || "unknown").toLowerCase();
+      if (platform === "x") platform = "twitter";
+      if (platform === "linkedin" && acc.metadata?.accountType === "organization") {
+        platform = "linkedin_page";
+      }
       if (acc.isActive !== false) discoveredChannels.add(platform);
 
       await db.insert(schema.zernioConnections).values({
@@ -472,6 +534,48 @@ export async function discoverProfiles(accountId: string): Promise<DiscoveryResu
           typeof acc.followersCount === "number" ? acc.followersCount : null,
       });
       insertedConnectionsCount++;
+
+      // Check for LinkedIn organization / company pages
+      if (
+        (platform === "linkedin" || platform === "linkedin_page") &&
+        Array.isArray(acc.metadata?.availableOrganizations) &&
+        acc.metadata.availableOrganizations.length > 0
+      ) {
+        for (const org of acc.metadata.availableOrganizations) {
+          const orgUrn = org.urn || (org.id ? `urn:li:organization:${org.id}` : "");
+          const compoundConnectionId = orgUrn
+            ? `${connZernioId}::${orgUrn}`
+            : `${connZernioId}::org-${org.id}`;
+          const orgDisplayName = `${org.name || "LinkedIn Page"} (Business Page)`;
+          const orgUsername = org.vanityName || (org.id ? String(org.id) : null);
+          const orgLogo = org.logoUrl || null;
+          const orgUrl = org.vanityName
+            ? `https://www.linkedin.com/company/${org.vanityName}`
+            : org.id
+            ? `https://www.linkedin.com/company/${org.id}`
+            : null;
+
+          await db.insert(schema.zernioConnections).values({
+            id: crypto.randomUUID(),
+            zernioAccountId: accountId,
+            zernioProfileId: fallbackProfileInternalId,
+            connectionId: compoundConnectionId,
+            platform: "linkedin_page",
+            username: orgUsername,
+            displayName: orgDisplayName,
+            profilePicture: orgLogo,
+            profileUrl: orgUrl,
+            isActive: acc.isActive !== false ? 1 : 0,
+            platformStatus:
+              acc.platformStatus || (acc.isActive !== false ? "active" : "inactive"),
+            followersCount: null,
+          });
+          insertedConnectionsCount++;
+          if (acc.isActive !== false) {
+            discoveredChannels.add("linkedin_page");
+          }
+        }
+      }
     }
   }
 
@@ -539,7 +643,7 @@ export interface ZernioMediaItem {
 }
 
 export interface ZernioPublishPayload {
-  platform: "linkedin" | "youtube" | "instagram" | "facebook";
+  platform: "linkedin" | "youtube" | "instagram" | "facebook" | "twitter" | "x" | "linkedin_page";
   accountId: string; // The social profile ID in Zernio
   content: string;
   title?: string | null;
@@ -581,14 +685,32 @@ export async function publishPostToZernio(
     });
   }
 
-  const platformEntry: any = {
-    platform: payload.platform,
-    accountId: payload.accountId,
-  };
-
+  let targetAccountId = payload.accountId;
   const specificData: Record<string, any> = { ...(payload.platformSpecificData || {}) };
 
-  if (payload.platform === "youtube") {
+  // Handle compound accountId for LinkedIn Organization: "baseAccountId::urn:li:organization:123"
+  if (targetAccountId.includes("::")) {
+    const [baseId, orgUrn] = targetAccountId.split("::");
+    targetAccountId = baseId;
+    if (!specificData.organizationUrn) {
+      specificData.organizationUrn = orgUrn;
+    }
+  }
+
+  // Normalize platform for Zernio API
+  let zernioPlatform = payload.platform as string;
+  if (payload.platform === "linkedin_page") {
+    zernioPlatform = "linkedin";
+  } else if (payload.platform === "x") {
+    zernioPlatform = "twitter";
+  }
+
+  const platformEntry: any = {
+    platform: zernioPlatform,
+    accountId: targetAccountId,
+  };
+
+  if (zernioPlatform === "youtube") {
     // YouTube requires video title in platformSpecificData (max 100 chars)
     const rawTitle = payload.title || payload.content.split("\n")[0] || "Video";
     const cleanTitle = rawTitle
@@ -602,7 +724,7 @@ export async function publishPostToZernio(
       specificData.madeForKids = false;
     }
     platformEntry.platformSpecificData = specificData;
-  } else if (payload.platform === "linkedin") {
+  } else if (zernioPlatform === "linkedin") {
     if (payload.postType === "document" || mediaItems.some((m) => m.type === "document")) {
       specificData.documentTitle = (payload.title || "Document").substring(0, 100);
     }
@@ -646,8 +768,8 @@ export async function publishPostToZernio(
     body.mediaUrls = mediaItems.map((m) => m.url);
   }
 
-  // YouTube Shorts are automatically detected by video aspect ratio/duration, avoid postType flag for YouTube
-  if (payload.postType && payload.platform !== "youtube") {
+  // YouTube Shorts and Twitter do not use postType field
+  if (payload.postType && zernioPlatform !== "youtube" && zernioPlatform !== "twitter") {
     body.postType = payload.postType;
   }
 
