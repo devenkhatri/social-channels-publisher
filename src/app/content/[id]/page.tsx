@@ -23,6 +23,7 @@ import {
   Shield,
   Play,
   Share2,
+  RotateCcw,
 } from "lucide-react";
 
 type ChannelType = "linkedin" | "youtube" | "instagram" | "facebook" | "skool";
@@ -261,6 +262,34 @@ export default function ContentDetailPage({
     },
   });
 
+  // Revert / Unmark as Done mutation
+  const unmarkDoneMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/content/${id}/unmark-done`, {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to revert folder");
+      return json;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["content-detail", id] });
+      queryClient.invalidateQueries({ queryKey: ["content-items"] });
+      setToastMessage({
+        text: res.message || "Folder reverted to Unpublished on OneDrive!",
+        type: "success",
+      });
+      setTimeout(() => setToastMessage(null), 4000);
+    },
+    onError: (err: any) => {
+      setToastMessage({
+        text: err.message || "Failed to revert folder",
+        type: "error",
+      });
+      setTimeout(() => setToastMessage(null), 4000);
+    },
+  });
+
   // Publish all channels mutation
   const publishAllMutation = useMutation({
     mutationFn: async () => {
@@ -454,6 +483,29 @@ export default function ContentDetailPage({
                   <span>Mark as Done (-Done)</span>
                 </button>
               </>
+            )}
+
+            {item.isDone === 1 && (
+              <button
+                onClick={() => {
+                  if (
+                    confirm(
+                      `Revert this folder to Unpublished and remove "-Done" suffix on OneDrive?`
+                    )
+                  ) {
+                    unmarkDoneMutation.mutate();
+                  }
+                }}
+                disabled={unmarkDoneMutation.isPending}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-medium border border-slate-700 transition-all disabled:opacity-50"
+              >
+                {unmarkDoneMutation.isPending ? (
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                ) : (
+                  <RotateCcw className="w-3.5 h-3.5" />
+                )}
+                <span>Revert to Unpublished</span>
+              </button>
             )}
           </div>
         </div>
