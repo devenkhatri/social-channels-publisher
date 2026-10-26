@@ -223,6 +223,7 @@ export default function DashboardPage() {
     let label = channel.toUpperCase().slice(0, 2);
     if (channel === "linkedin") label = "LI";
     if (channel === "linkedin_page") label = "LP";
+    if (channel === "threads") label = "TH";
     if (channel === "twitter" || channel === "x") label = "X";
     if (channel === "youtube") label = "YT";
     if (channel === "instagram") label = "IG";
@@ -621,7 +622,7 @@ export default function DashboardPage() {
                 {/* Channels Status Strip & Action */}
                 <div className="mt-5 pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    {["linkedin", "linkedin_page", "twitter", "youtube", "instagram", "facebook", "skool"].map(
+                    {["linkedin", "linkedin_page", "threads", "youtube", "instagram", "facebook", "skool"].map(
                       (ch) => getChannelPill(ch, item.posts)
                     )}
                   </div>

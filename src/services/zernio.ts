@@ -643,7 +643,7 @@ export interface ZernioMediaItem {
 }
 
 export interface ZernioPublishPayload {
-  platform: "linkedin" | "youtube" | "instagram" | "facebook" | "twitter" | "x" | "linkedin_page";
+  platform: "linkedin" | "youtube" | "instagram" | "facebook" | "threads" | "twitter" | "x" | "linkedin_page";
   accountId: string; // The social profile ID in Zernio
   content: string;
   title?: string | null;
@@ -768,8 +768,13 @@ export async function publishPostToZernio(
     body.mediaUrls = mediaItems.map((m) => m.url);
   }
 
-  // YouTube Shorts and Twitter do not use postType field
-  if (payload.postType && zernioPlatform !== "youtube" && zernioPlatform !== "twitter") {
+  // YouTube Shorts, Twitter, and Threads do not use postType field
+  if (
+    payload.postType &&
+    zernioPlatform !== "youtube" &&
+    zernioPlatform !== "twitter" &&
+    zernioPlatform !== "threads"
+  ) {
     body.postType = payload.postType;
   }
 

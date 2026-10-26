@@ -94,8 +94,8 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
     // Categorize files
     const captionFile = children.find((c) => !c.isFolder && /^caption\.md$/i.test(c.name));
     const linkedinFile = children.find((c) => !c.isFolder && /^linkedin(-post)?\.md$/i.test(c.name));
-    const twitterFile = children.find(
-      (c) => !c.isFolder && /^(twitter|tweet|x)(-post)?\.md$/i.test(c.name)
+    const threadsFile = children.find(
+      (c) => !c.isFolder && /^(threads|thread|twitter|tweet|x)(-post)?\.md$/i.test(c.name)
     );
     const skoolFile = children.find((c) => !c.isFolder && /^skool(-post)?\.md$/i.test(c.name));
     const coverFile = children.find((c) => !c.isFolder && /^cover\.(svg|png|jpg|webp)$/i.test(c.name));
@@ -123,7 +123,7 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
     // Read markdown files
     let captionText = "";
     let linkedinText = "";
-    let twitterText = "";
+    let threadsText = "";
     let skoolText = "";
 
     try {
@@ -143,11 +143,11 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
     }
 
     try {
-      if (twitterFile) {
-        twitterText = await getFileContentAsText(twitterFile.id, twitterFile.downloadUrl);
+      if (threadsFile) {
+        threadsText = await getFileContentAsText(threadsFile.id, threadsFile.downloadUrl);
       }
     } catch (err) {
-      console.warn(`Could not read twitter/x post for ${folder.name}:`, err);
+      console.warn(`Could not read threads post for ${folder.name}:`, err);
     }
 
     try {
@@ -160,7 +160,7 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
 
     const captionExtract = extractTitleAndBody(captionText);
     const linkedinExtract = extractTitleAndBody(linkedinText);
-    const twitterExtract = extractTitleAndBody(twitterText);
+    const threadsExtract = extractTitleAndBody(threadsText);
     const skoolExtract = extractTitleAndBody(skoolText);
 
     // Primary title
@@ -222,7 +222,7 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
     const channels = [
       "linkedin",
       "linkedin_page",
-      "twitter",
+      "threads",
       "youtube",
       "instagram",
       "facebook",
@@ -234,7 +234,7 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
         .select()
         .from(schema.channelPosts)
         .where(
-          and(
+            and(
             eq(schema.channelPosts.contentItemId, contentItemId),
             eq(schema.channelPosts.channel, channel)
           )
@@ -260,11 +260,11 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
             mediaType = "carousel";
             postType = "carousel";
           }
-        } else if (channel === "twitter") {
+        } else if (channel === "threads") {
           postTitle = null;
           postBody =
-            twitterExtract.body ||
-            twitterExtract.title ||
+            threadsExtract.body ||
+            threadsExtract.title ||
             captionExtract.body ||
             captionExtract.title ||
             "";

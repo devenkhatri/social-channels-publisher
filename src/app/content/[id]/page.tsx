@@ -32,7 +32,7 @@ import {
 type ChannelType =
   | "linkedin"
   | "linkedin_page"
-  | "twitter"
+  | "threads"
   | "youtube"
   | "instagram"
   | "facebook"
@@ -176,7 +176,7 @@ export default function ContentDetailPage({
       } else if (assets.hyperframesVideo || (assets.videos && assets.videos.length > 0)) {
         setActiveMediaTab("video");
       }
-    } else if (activeChannel === "twitter") {
+    } else if (activeChannel === "threads") {
       if (assets.hyperframesVideo || (assets.videos && assets.videos.length > 0)) {
         setActiveMediaTab("video");
       } else if (assets.slides && assets.slides.length > 0) {
@@ -442,10 +442,10 @@ export default function ContentDetailPage({
           let matches = false;
           if (activeChannel === "linkedin_page") {
             matches = connPlatform === "linkedin_page";
+          } else if (activeChannel === "threads") {
+            matches = connPlatform === "threads";
           } else if (activeChannel === "linkedin") {
             matches = connPlatform === "linkedin";
-          } else if (activeChannel === "twitter") {
-            matches = connPlatform === "twitter" || connPlatform === "x";
           } else {
             matches = connPlatform === activeChannel.toLowerCase();
           }
@@ -466,10 +466,10 @@ export default function ContentDetailPage({
         let matches = false;
         if (activeChannel === "linkedin_page") {
           matches = profPlatform === "linkedin_page";
+        } else if (activeChannel === "threads") {
+          matches = profPlatform === "threads";
         } else if (activeChannel === "linkedin") {
           matches = profPlatform === "linkedin";
-        } else if (activeChannel === "twitter") {
-          matches = profPlatform === "twitter" || profPlatform === "x";
         } else {
           matches = profPlatform === activeChannel.toLowerCase();
         }
@@ -630,7 +630,7 @@ export default function ContentDetailPage({
           [
             { id: "linkedin", name: "LinkedIn", badge: "Personal" },
             { id: "linkedin_page", name: "LinkedIn Page", badge: "Business" },
-            { id: "twitter", name: "X (Twitter)", badge: "Post" },
+            { id: "threads", name: "Threads", badge: "Post" },
             { id: "youtube", name: "YouTube", badge: "Shorts / Video" },
             { id: "instagram", name: "Instagram", badge: "Reel / Carousel" },
             { id: "facebook", name: "Facebook", badge: "Reel / Feed" },
@@ -1062,8 +1062,8 @@ export default function ContentDetailPage({
                 <span className="text-sm font-semibold text-white">
                   {activeChannel === "linkedin_page"
                     ? "LinkedIn Business Page"
-                    : activeChannel === "twitter"
-                    ? "X (Twitter)"
+                    : activeChannel === "threads"
+                    ? "Threads"
                     : activeChannel === "linkedin"
                     ? "LinkedIn Personal"
                     : activeChannel.charAt(0).toUpperCase() + activeChannel.slice(1)}{" "}
@@ -1115,7 +1115,7 @@ export default function ContentDetailPage({
             {/* Title field (where applicable) */}
             {activeChannel !== "instagram" &&
               activeChannel !== "facebook" &&
-              activeChannel !== "twitter" && (
+              activeChannel !== "threads" && (
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-medium text-slate-300">
@@ -1152,12 +1152,12 @@ export default function ContentDetailPage({
               </div>
             )}
 
-            {/* Post Type Selector (Instagram / Facebook / LinkedIn / LinkedIn Page / Twitter) */}
+            {/* Post Type Selector (Instagram / Facebook / LinkedIn / LinkedIn Page / Threads) */}
             {(activeChannel === "instagram" ||
               activeChannel === "facebook" ||
               activeChannel === "linkedin" ||
               activeChannel === "linkedin_page" ||
-              activeChannel === "twitter") && (
+              activeChannel === "threads") && (
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1.5">
                   Media / Publication Format
@@ -1199,7 +1199,7 @@ export default function ContentDetailPage({
                         📝 Text Only
                       </button>
                     </>
-                  ) : activeChannel === "twitter" ? (
+                  ) : activeChannel === "threads" ? (
                     <>
                       <button
                         type="button"
@@ -1284,30 +1284,30 @@ export default function ContentDetailPage({
                 <label className="text-xs font-medium text-slate-300">
                   {activeChannel === "youtube"
                     ? "Video Description"
-                    : activeChannel === "twitter"
-                    ? "Tweet / Post Content"
+                    : activeChannel === "threads"
+                    ? "Threads Post Content"
                     : "Post Content / Caption"}
                 </label>
                 <div className="flex items-center gap-3">
-                  {activeChannel === "twitter" ? (
+                  {activeChannel === "threads" ? (
                     <div className="flex items-center gap-1.5">
                       <span
                         className={`text-[11px] font-mono font-medium ${
-                          currentForm.body.length > 280
-                            ? "text-amber-400 font-semibold"
-                            : currentForm.body.length > 250
+                          currentForm.body.length > 500
+                            ? "text-rose-400 font-semibold"
+                            : currentForm.body.length > 450
                             ? "text-amber-300"
                             : "text-slate-400"
                         }`}
                       >
-                        {currentForm.body.length}/280 chars
+                        {currentForm.body.length}/500 chars
                       </span>
-                      {currentForm.body.length > 280 && (
+                      {currentForm.body.length > 500 && (
                         <span
-                          className="text-[10px] text-amber-400/80 cursor-help"
-                          title="Standard X limit is 280 characters. Over 280 chars requires X Premium subscription."
+                          className="text-[10px] text-rose-400 cursor-help"
+                          title="Threads post limit is 500 characters."
                         >
-                          (X Premium)
+                          (Exceeds limit)
                         </span>
                       )}
                     </div>
@@ -1341,7 +1341,11 @@ export default function ContentDetailPage({
                 rows={9}
                 value={currentForm.body}
                 onChange={(e) => handleFormChange("body", e.target.value)}
-                placeholder="Write post content..."
+                placeholder={
+                  activeChannel === "threads"
+                    ? "Write your Threads post (up to 500 characters)..."
+                    : "Write post content..."
+                }
                 className="w-full px-3.5 py-2.5 text-xs bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 leading-relaxed font-sans resize-y"
               />
             </div>
@@ -1373,7 +1377,7 @@ export default function ContentDetailPage({
                   </select>
                 ) : (
                   <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center justify-between">
-                    <span>No active connected {activeChannel === "linkedin_page" ? "LinkedIn Page" : activeChannel === "twitter" ? "X (Twitter)" : activeChannel} channel found in Zernio</span>
+                    <span>No active connected {activeChannel === "linkedin_page" ? "LinkedIn Page" : activeChannel === "threads" ? "Threads" : activeChannel} channel found in Zernio</span>
                     <Link
                       href="/settings/zernio"
                       className="text-xs underline font-medium hover:text-white"
@@ -1417,8 +1421,8 @@ export default function ContentDetailPage({
                     {currentPost?.status === "scheduled" ? "Re-queue to" : "Queue to"}{" "}
                     {activeChannel === "linkedin_page"
                       ? "LinkedIn Page"
-                      : activeChannel === "twitter"
-                      ? "X"
+                      : activeChannel === "threads"
+                      ? "Threads"
                       : activeChannel}
                   </span>
                 </button>

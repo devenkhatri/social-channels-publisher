@@ -88,6 +88,9 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
     if (post.channel === "linkedin_page") {
       return (connPlatform === "linkedin_page" || connPlatform === "linkedin") && c.isActive === 1;
     }
+    if (post.channel === "threads") {
+      return connPlatform === "threads" && c.isActive === 1;
+    }
     if (post.channel === "twitter" || post.channel === "x") {
       return (connPlatform === "twitter" || connPlatform === "x") && c.isActive === 1;
     }
@@ -272,7 +275,7 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
           }
         }
       }
-    } else if (post.channel === "twitter" || post.channel === "x") {
+    } else if (post.channel === "threads" || post.channel === "twitter" || post.channel === "x") {
       if (post.postType === "video" || (!post.postType && (hyperframesVideo || regularVideo))) {
         const video = hyperframesVideo || regularVideo;
         if (video) {
@@ -287,12 +290,13 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
           mediaItems.push({ type: "video", url: publicUrl });
         }
       } else if (slidesFolder) {
-        // Twitter allows up to 4 images
+        // Threads supports up to 10 images; Twitter allows up to 4
+        const maxImages = post.channel === "threads" ? 10 : 4;
         const slideFiles = await listFolderChildren(slidesFolder.id);
         const imageSlides = slideFiles.filter(
           (f) => !f.isFolder && /\.(svg|png|jpg|jpeg|webp)$/i.test(f.name)
         );
-        const sorted = sortSlidesNaturally(imageSlides).slice(0, 4);
+        const sorted = sortSlidesNaturally(imageSlides).slice(0, maxImages);
         for (const slide of sorted) {
           if (slide.name.endsWith(".svg")) {
             const svgText = await getFileContentAsText(slide.id, slide.downloadUrl);
