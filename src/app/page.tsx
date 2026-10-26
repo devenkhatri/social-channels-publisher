@@ -21,6 +21,9 @@ import {
   RefreshCw,
   ExternalLink,
   Check,
+  CheckSquare,
+  Square,
+  X,
 } from "lucide-react";
 
 type ContentItem = {
@@ -52,6 +55,7 @@ export default function DashboardPage() {
     "newest"
   );
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Fetch sync status (last refreshed datetime, etc.)
   const { data: syncStatus, refetch: refetchSyncStatus } = useQuery({
@@ -123,6 +127,45 @@ export default function DashboardPage() {
       setTimeout(() => setToastMessage(null), 4000);
     },
   });
+
+  // Batch mutation for multi-selected content folders
+  const batchMutation = useMutation({
+    mutationFn: async (action: "mark-done" | "publish-all") => {
+      const res = await fetch("/api/content/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemIds: selectedIds, action }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Batch action failed");
+      return json;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["content-items"] });
+      queryClient.invalidateQueries({ queryKey: ["sync-status"] });
+      setSelectedIds([]);
+      setToastMessage(res.message || "Batch action completed successfully!");
+      setTimeout(() => setToastMessage(null), 4000);
+    },
+    onError: (err: any) => {
+      setToastMessage(`Batch error: ${err.message}`);
+      setTimeout(() => setToastMessage(null), 5000);
+    },
+  });
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const selectAll = (itemsToSelect: ContentItem[]) => {
+    setSelectedIds(itemsToSelect.map((item) => item.id));
+  };
+
+  const deselectAll = () => {
+    setSelectedIds([]);
+  };
 
   const counts = data?.counts || { total: 0, unpublished: 0, published: 0 };
   const rawItems = data?.items || [];
@@ -402,6 +445,46 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Select All / Batch Options Toolbar */}
+      {!isLoading && filteredItems.length > 0 && (
+        <div className="flex items-center justify-between text-xs text-slate-400 px-1 py-1">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                if (selectedIds.length === filteredItems.length) {
+                  deselectAll();
+                } else {
+                  selectAll(filteredItems);
+                }
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white font-medium transition-all shadow-sm min-h-[36px]"
+            >
+              {selectedIds.length === filteredItems.length && filteredItems.length > 0 ? (
+                <>
+                  <CheckSquare className="w-4 h-4 text-indigo-400" />
+                  <span>Deselect All</span>
+                </>
+              ) : (
+                <>
+                  <Square className="w-4 h-4 text-slate-400" />
+                  <span>Select All ({filteredItems.length})</span>
+                </>
+              )}
+            </button>
+
+            {selectedIds.length > 0 && (
+              <span className="text-[11px] font-semibold text-indigo-400 animate-in fade-in">
+                {selectedIds.length} of {filteredItems.length} selected
+              </span>
+            )}
+          </div>
+
+          <div className="text-[11px] text-slate-500 font-mono hidden sm:block">
+            Showing {filteredItems.length} folders
+          </div>
+        </div>
+      )}
+
       {/* Content Items List / Empty State */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -452,87 +535,172 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredItems.map((item) => (
-            <div
-              key={item.id}
-              className="group bg-slate-900/90 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 shadow-lg shadow-black/20 flex flex-col justify-between transition-all"
-            >
-              <div>
-                {/* Header: Folder name & Done badge */}
-                <div className="flex items-start justify-between gap-3 mb-2.5">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Folder className="w-4 h-4 text-indigo-400 shrink-0" />
-                    <span className="font-mono text-xs font-semibold text-slate-200 truncate">
-                      {item.folderName}
+          {filteredItems.map((item) => {
+            const isSelected = selectedIds.includes(item.id);
+            return (
+              <div
+                key={item.id}
+                className={`group rounded-2xl p-5 shadow-lg shadow-black/20 flex flex-col justify-between transition-all ${
+                  isSelected
+                    ? "bg-indigo-950/30 border-2 border-indigo-500 ring-2 ring-indigo-500/20"
+                    : "bg-slate-900/90 border border-slate-800 hover:border-slate-700"
+                }`}
+              >
+                <div>
+                  {/* Header: Select Checkbox, Folder name & Done badge */}
+                  <div className="flex items-start justify-between gap-3 mb-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSelect(item.id);
+                        }}
+                        className={`p-1 rounded-lg transition-all min-h-[32px] min-w-[32px] flex items-center justify-center ${
+                          isSelected
+                            ? "text-indigo-400 bg-indigo-500/20"
+                            : "text-slate-500 hover:text-slate-300 hover:bg-slate-800"
+                        }`}
+                        title={isSelected ? "Deselect item" : "Select item for batch action"}
+                      >
+                        {isSelected ? (
+                          <CheckSquare className="w-4 h-4 text-indigo-400" />
+                        ) : (
+                          <Square className="w-4 h-4" />
+                        )}
+                      </button>
+
+                      <Folder className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <span className="font-mono text-xs font-semibold text-slate-200 truncate">
+                        {item.folderName}
+                      </span>
+                    </div>
+
+                    <span
+                      className={`shrink-0 text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full border ${
+                        item.isDone === 1
+                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                          : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                      }`}
+                    >
+                      {item.isDone === 1 ? "Published (-Done)" : "Unpublished"}
                     </span>
                   </div>
 
-                  <span
-                    className={`shrink-0 text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full border ${
-                      item.isDone === 1
-                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                        : "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                    }`}
-                  >
-                    {item.isDone === 1 ? "Published (-Done)" : "Unpublished"}
-                  </span>
-                </div>
-
-                {/* Title */}
-                <Link href={`/content/${item.id}`} className="block">
-                  <h4 className="text-sm font-semibold text-white line-clamp-2 group-hover:text-indigo-300 transition-colors">
-                    {item.title || "Untitled Post"}
-                  </h4>
-                </Link>
-
-                {/* Media Badges */}
-                <div className="flex flex-wrap items-center gap-2 mt-3 text-[11px] text-slate-400">
-                  <div className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-                    <Layers className="w-3 h-3 text-slate-400" />
-                    <span>{item.slideCount || 0} Slides</span>
-                  </div>
-                  <div className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-                    <Video className="w-3 h-3 text-rose-400" />
-                    <span>Hyperframes</span>
-                  </div>
-                  <div className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-                    <FileText className="w-3 h-3 text-blue-400" />
-                    <span>PDF</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Channels Status Strip & Action */}
-              <div className="mt-5 pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {["linkedin", "youtube", "instagram", "facebook", "skool"].map(
-                    (ch) => getChannelPill(ch, item.posts)
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  {item.isDone === 0 && (
-                    <button
-                      onClick={() => markDoneMutation.mutate(item.id)}
-                      disabled={markDoneMutation.isPending}
-                      title="Mark as published & rename folder on OneDrive"
-                      className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-emerald-600/20 text-slate-300 hover:text-emerald-400 text-[11px] font-medium border border-slate-700 hover:border-emerald-500/30 transition-all"
-                    >
-                      <span>-Done</span>
-                    </button>
-                  )}
-
-                  <Link
-                    href={`/content/${item.id}`}
-                    className="flex items-center gap-1 text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
-                  >
-                    <span>Editor</span>
-                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  {/* Title */}
+                  <Link href={`/content/${item.id}`} className="block">
+                    <h4 className="text-sm font-semibold text-white line-clamp-2 group-hover:text-indigo-300 transition-colors">
+                      {item.title || "Untitled Post"}
+                    </h4>
                   </Link>
+
+                  {/* Media Badges */}
+                  <div className="flex flex-wrap items-center gap-2 mt-3 text-[11px] text-slate-400">
+                    <div className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                      <Layers className="w-3 h-3 text-slate-400" />
+                      <span>{item.slideCount || 0} Slides</span>
+                    </div>
+                    <div className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                      <Video className="w-3 h-3 text-rose-400" />
+                      <span>Hyperframes</span>
+                    </div>
+                    <div className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                      <FileText className="w-3 h-3 text-blue-400" />
+                      <span>PDF</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Channels Status Strip & Action */}
+                <div className="mt-5 pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {["linkedin", "youtube", "instagram", "facebook", "skool"].map(
+                      (ch) => getChannelPill(ch, item.posts)
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {item.isDone === 0 && (
+                      <button
+                        onClick={() => markDoneMutation.mutate(item.id)}
+                        disabled={markDoneMutation.isPending}
+                        title="Mark as published & rename folder on OneDrive"
+                        className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-emerald-600/20 text-slate-300 hover:text-emerald-400 text-[11px] font-medium border border-slate-700 hover:border-emerald-500/30 transition-all"
+                      >
+                        <span>-Done</span>
+                      </button>
+                    )}
+
+                    <Link
+                      href={`/content/${item.id}`}
+                      className="flex items-center gap-1 text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+                    >
+                      <span>Editor</span>
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
+        </div>
+      )}
+
+      {/* Floating Batch Action Dock */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-20 lg:bottom-8 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 backdrop-blur-xl border border-indigo-500/50 shadow-2xl shadow-indigo-950/80 rounded-2xl px-4 py-3 flex items-center gap-3 animate-in slide-in-from-bottom-5 duration-200 max-w-[95vw] sm:max-w-max">
+          <div className="flex items-center gap-2 text-xs font-semibold text-white pr-3 border-r border-slate-800">
+            <span className="w-5 h-5 rounded-full bg-indigo-600 text-[11px] flex items-center justify-center font-bold">
+              {selectedIds.length}
+            </span>
+            <span className="hidden sm:inline">Selected</span>
+          </div>
+
+          <button
+            onClick={() => {
+              if (
+                confirm(
+                  `Mark ${selectedIds.length} selected folders as Done & rename them with "-Done" on OneDrive?`
+                )
+              ) {
+                batchMutation.mutate("mark-done");
+              }
+            }}
+            disabled={batchMutation.isPending}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-lg shadow-emerald-600/25 transition-all disabled:opacity-50 min-h-[44px]"
+          >
+            {batchMutation.isPending ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            )}
+            <span>Mark Done & Rename (-Done)</span>
+          </button>
+
+          <button
+            onClick={() => {
+              if (
+                confirm(
+                  `Publish all configured channels for ${selectedIds.length} selected folders?`
+                )
+              ) {
+                batchMutation.mutate("publish-all");
+              }
+            }}
+            disabled={batchMutation.isPending}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/25 transition-all disabled:opacity-50 min-h-[44px]"
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span>Publish All</span>
+          </button>
+
+          <button
+            onClick={deselectAll}
+            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors ml-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            title="Clear selection"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
     </div>

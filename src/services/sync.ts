@@ -13,6 +13,7 @@ import {
   shouldSkipFolder,
   SlideItem,
 } from "./extractor";
+import { logActivity } from "./activity";
 
 export interface SyncResult {
   success: boolean;
@@ -328,6 +329,14 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
   const processedCount = folders.length - skippedCount;
   const skipMessage = skippedCount > 0 ? ` (${skippedCount} skipped)` : "";
 
+
+  await logActivity({
+    type: "sync",
+    title: "OneDrive Content Sync",
+    description: `Processed ${processedCount} folders${skipMessage} (${newCount} new, ${updatedCount} updated)`,
+    status: "success",
+  });
+
   return {
     success: true,
     message: `Processed ${processedCount} folders${skipMessage}`,
@@ -338,4 +347,5 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
     lastSyncedAt,
   };
 }
+
 

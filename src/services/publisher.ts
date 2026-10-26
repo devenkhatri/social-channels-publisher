@@ -14,6 +14,7 @@ import {
 } from "./onedrive";
 import { rasterizeSvgToPng } from "./rasterizer";
 import { sortSlidesNaturally } from "./extractor";
+import { logActivity } from "./activity";
 
 export interface PublishResult {
   success: boolean;
@@ -245,6 +246,15 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
     // 6. Check if all posts are completed and rename folder to "-Done"
     const folderRenamed = await checkAndRenameFolderIfDone(contentItem.id);
 
+    await logActivity({
+      type: "publish",
+      title: `Published to ${post.channel}`,
+      description: `Post ID: ${zernioRes.id}`,
+      contentItemId: contentItem.id,
+      channel: post.channel,
+      status: "success",
+    });
+
     return {
       success: true,
       postId: post.id,
@@ -264,8 +274,18 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
       })
       .where(eq(schema.channelPosts.id, post.id));
 
+    await logActivity({
+      type: "error",
+      title: `Publish failed on ${post.channel}`,
+      description: errorMsg,
+      contentItemId: contentItem.id,
+      channel: post.channel,
+      status: "error",
+    });
+
     throw publishErr;
   }
+
 }
 
 /**
@@ -310,6 +330,14 @@ export async function checkAndRenameFolderIfDone(contentItemId: string): Promise
           updatedAt: nowIso,
         })
         .where(eq(schema.contentItems.id, contentItemId));
+
+      await logActivity({
+        type: "rename",
+        title: "Folder Published & Renamed on OneDrive",
+        description: `All channels published. Renamed ${item.originalFolderName} to ${newFolderName}`,
+        contentItemId,
+        status: "success",
+      });
 
       return true;
     } catch (renameErr) {

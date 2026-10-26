@@ -78,3 +78,17 @@ export const oauthTokens = sqliteTable("oauth_tokens", {
   expiresAt: text("expires_at"),
   createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
+
+// 7. Activity logs (audit trail for syncs, publishes, renames, errors)
+export const activityLogs = sqliteTable("activity_logs", {
+  id: text("id").primaryKey(), // UUID
+  type: text("type").notNull(), // 'sync' | 'publish' | 'rename' | 'error'
+  title: text("title").notNull(),
+  description: text("description"),
+  contentItemId: text("content_item_id"),
+  channel: text("channel"),
+  status: text("status").notNull().default("info"), // 'success' | 'warning' | 'error' | 'info'
+  metadata: text("metadata"), // JSON string
+  createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+

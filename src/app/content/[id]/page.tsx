@@ -256,6 +256,44 @@ export default function ContentDetailPage({
     },
   });
 
+  // Publish all channels mutation
+  const publishAllMutation = useMutation({
+    mutationFn: async () => {
+      if (currentPost) {
+        await fetch(`/api/posts/${currentPost.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(currentForm),
+        });
+      }
+
+      const res = await fetch("/api/zernio/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contentItemId: id }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to publish all channels");
+      return json;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-detail", id] });
+      queryClient.invalidateQueries({ queryKey: ["content-items"] });
+      setToastMessage({
+        text: "Published all channels! Checking folder status...",
+        type: "success",
+      });
+      setTimeout(() => setToastMessage(null), 4000);
+    },
+    onError: (err: any) => {
+      setToastMessage({
+        text: err.message || "Failed to publish all channels",
+        type: "error",
+      });
+      setTimeout(() => setToastMessage(null), 5000);
+    },
+  });
+
   const copyToClipboard = (text: string, fieldName: string) => {
     navigator.clipboard.writeText(text);
     setCopiedField(fieldName);
@@ -368,26 +406,49 @@ export default function ContentDetailPage({
             )}
 
             {item.isDone === 0 && (
-              <button
-                onClick={() => {
-                  if (
-                    confirm(
-                      `Mark this folder as published and rename to "${item.originalFolderName}-Done" on OneDrive?`
-                    )
-                  ) {
-                    markDoneMutation.mutate();
-                  }
-                }}
-                disabled={markDoneMutation.isPending}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium shadow-md shadow-emerald-600/20 transition-all disabled:opacity-50"
-              >
-                {markDoneMutation.isPending ? (
-                  <RefreshCw className="w-3 h-3 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                )}
-                <span>Mark as Done (-Done)</span>
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    if (
+                      confirm(
+                        `Publish this content across all configured social channels (YouTube, LinkedIn, Instagram, Facebook)?`
+                      )
+                    ) {
+                      publishAllMutation.mutate();
+                    }
+                  }}
+                  disabled={publishAllMutation.isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/25 transition-all disabled:opacity-50"
+                >
+                  {publishAllMutation.isPending ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Send className="w-3.5 h-3.5" />
+                  )}
+                  <span>Publish All Channels</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (
+                      confirm(
+                        `Mark this folder as published and rename to "${item.originalFolderName}-Done" on OneDrive?`
+                      )
+                    ) {
+                      markDoneMutation.mutate();
+                    }
+                  }}
+                  disabled={markDoneMutation.isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium shadow-md shadow-emerald-600/20 transition-all disabled:opacity-50"
+                >
+                  {markDoneMutation.isPending ? (
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  )}
+                  <span>Mark as Done (-Done)</span>
+                </button>
+              </>
             )}
           </div>
         </div>

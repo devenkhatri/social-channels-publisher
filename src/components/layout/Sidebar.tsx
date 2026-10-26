@@ -7,6 +7,7 @@ import {
   FolderSync,
   Cloud,
   KeyRound,
+  Activity,
   LogOut,
   Sparkles,
   ExternalLink,
@@ -22,6 +23,11 @@ const NAV_ITEMS = [
     name: "Content Library",
     href: "/content",
     icon: FolderSync,
+  },
+  {
+    name: "Activity Log",
+    href: "/activity",
+    icon: Activity,
   },
   {
     name: "OneDrive Source",

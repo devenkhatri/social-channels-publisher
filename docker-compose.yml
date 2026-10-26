@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  social-publisher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: social-publisher
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - SESSION_SECRET=${SESSION_SECRET:-super-secret-session-key-must-be-32-chars}
+      - DATABASE_URL=file:/app/data/social-publisher.db
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID:-common}
+      - AZURE_REDIRECT_URI=${AZURE_REDIRECT_URI:-http://localhost:3000/api/onedrive/callback}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+    volumes:
+      # Persistent volume for SQLite database and state
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/auth/session"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

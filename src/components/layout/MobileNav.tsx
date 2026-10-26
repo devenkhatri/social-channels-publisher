@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FolderSync, Cloud, KeyRound } from "lucide-react";
+import { LayoutDashboard, FolderSync, Activity, Cloud, KeyRound } from "lucide-react";
 
 const NAV_ITEMS = [
   {
@@ -14,6 +14,11 @@ const NAV_ITEMS = [
     name: "Library",
     href: "/content",
     icon: FolderSync,
+  },
+  {
+    name: "Activity",
+    href: "/activity",
+    icon: Activity,
   },
   {
     name: "OneDrive",
@@ -32,7 +37,7 @@ export function MobileNav() {
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800 pb-safe">
-      <div className="grid grid-cols-4 h-16">
+      <div className="grid grid-cols-5 h-16">
         {NAV_ITEMS.map((item) => {
           const isActive =
             item.href === "/"
