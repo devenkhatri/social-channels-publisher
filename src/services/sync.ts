@@ -10,6 +10,7 @@ import {
   extractTitleAndBody,
   sortSlidesNaturally,
   parseFolderStatus,
+  shouldSkipFolder,
   SlideItem,
 } from "./extractor";
 
@@ -19,6 +20,7 @@ export interface SyncResult {
   syncedFolders: number;
   newItems: number;
   updatedItems: number;
+  skippedFolders: number;
   lastSyncedAt: string;
 }
 
@@ -45,8 +47,21 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
 
   let newCount = 0;
   let updatedCount = 0;
+  let skippedCount = 0;
 
   for (const folder of folders) {
+    // Check skip rules:
+    // 1. Skip if folder name does not start with a number (0-9)
+    // 2. Skip if folder name ends with "Skip" or "Skipped" (case-insensitive)
+    if (shouldSkipFolder(folder.name)) {
+      skippedCount++;
+      // If folder was previously tracked in database, clean it up since it is marked to skip
+      await db
+        .delete(schema.contentItems)
+        .where(eq(schema.contentItems.driveItemId, folder.id));
+      continue;
+    }
+
     const { isDone, originalName } = parseFolderStatus(folder.name);
 
     // 3. List children inside this content folder
@@ -298,12 +313,17 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
     });
   }
 
+  const processedCount = folders.length - skippedCount;
+  const skipMessage = skippedCount > 0 ? ` (${skippedCount} skipped)` : "";
+
   return {
     success: true,
-    message: `Synced ${folders.length} folders successfully`,
-    syncedFolders: folders.length,
+    message: `Processed ${processedCount} folders${skipMessage}`,
+    syncedFolders: processedCount,
     newItems: newCount,
     updatedItems: updatedCount,
+    skippedFolders: skippedCount,
     lastSyncedAt,
   };
 }
+

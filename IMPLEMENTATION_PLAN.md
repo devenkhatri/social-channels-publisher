@@ -391,6 +391,10 @@ PATCH /me/drive/items/{id}          → rename folder (append "-Done" on publish
   - `POST /api/sync` → trigger full sync from OneDrive
   - Enumerate all subfolders inside the selected parent folder
   - For each subfolder:
+    - **Folder Skip Rules**:
+      - Skip if folder name does not start with a number (0-9)
+      - Skip if folder name ends with "Skip" or "Skipped" (case-insensitive)
+      - Automatically cleans up any previously tracked item that was subsequently renamed to Skip
     - **Detect Publication Status**: Check if folder name ends with `-Done` (case-insensitive)
       - If ends with `-Done`: `is_done = 1` (published)
       - If no `-Done`: `is_done = 0` (unpublished / active pending)

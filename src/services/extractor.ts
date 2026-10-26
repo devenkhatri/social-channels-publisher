@@ -99,3 +99,45 @@ export function parseFolderStatus(folderName: string): {
   const originalName = isDone ? folderName.replace(/-done$/i, "") : folderName;
   return { isDone, originalName };
 }
+
+/**
+ * Determines if a folder should be skipped from processing.
+ * Rules:
+ * 1. Skip if the folder name does not start with a number (0-9).
+ * 2. Skip if the folder name ends with "Skip" or "Skipped" (case-insensitive).
+ */
+export function shouldSkipFolder(folderName: string): boolean {
+  if (!folderName) return true;
+  const trimmed = folderName.trim();
+
+  // Rule 1: Folder name must start with a digit
+  if (!/^\d/.test(trimmed)) {
+    return true;
+  }
+
+  // Rule 2: Folder name must not end with "Skip" or "Skipped"
+  if (/(?:skip|skipped)$/i.test(trimmed)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Returns human-readable reason why a folder was skipped, or null if valid.
+ */
+export function getFolderSkipReason(folderName: string): string | null {
+  if (!folderName) return "Empty folder name";
+  const trimmed = folderName.trim();
+
+  if (!/^\d/.test(trimmed)) {
+    return "Folder name does not start with a number";
+  }
+
+  if (/(?:skip|skipped)$/i.test(trimmed)) {
+    return "Folder name ends with Skip or Skipped";
+  }
+
+  return null;
+}
+
