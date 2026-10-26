@@ -14,7 +14,7 @@ import {
   renameFolder,
 } from "./onedrive";
 import { rasterizeSvgToPng } from "./rasterizer";
-import { sortSlidesNaturally } from "./extractor";
+import { sortSlidesNaturally, stripMarkdown } from "./extractor";
 import { logActivity } from "./activity";
 
 export interface PublishResult {
@@ -282,8 +282,8 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
     const payload: ZernioPublishPayload = {
       platform: post.channel as any,
       accountId: targetAccountId,
-      content: post.body || "",
-      title: post.title || undefined,
+      content: stripMarkdown(post.body || ""),
+      title: post.title ? stripMarkdown(post.title) : undefined,
       mediaItems: mediaItems.length > 0 ? mediaItems : undefined,
       mediaUrls: uploadedMediaUrls.length > 0 ? uploadedMediaUrls : undefined,
       postType: post.postType as any,

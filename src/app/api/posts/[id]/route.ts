@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, schema } from "@/db";
 import { eq } from "drizzle-orm";
+import { stripMarkdown } from "@/services/extractor";
 
 export async function PATCH(
   request: NextRequest,
@@ -23,8 +24,8 @@ export async function PATCH(
       updatedAt: new Date().toISOString(),
     };
 
-    if (body.title !== undefined) updateData.title = body.title;
-    if (body.body !== undefined) updateData.body = body.body;
+    if (body.title !== undefined) updateData.title = body.title ? stripMarkdown(body.title) : null;
+    if (body.body !== undefined) updateData.body = body.body ? stripMarkdown(body.body) : "";
     if (body.postType !== undefined) updateData.postType = body.postType;
     if (body.mediaType !== undefined) updateData.mediaType = body.mediaType;
     if (body.status !== undefined) updateData.status = body.status;
