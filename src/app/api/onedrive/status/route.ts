@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db, schema } from "@/db";
 import { eq } from "drizzle-orm";
 import { getUserProfile, getAzureCredentials } from "@/services/onedrive";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const creds = await getAzureCredentials();
     const hasAzureCreds = Boolean(creds.clientId && creds.clientSecret);
@@ -50,9 +50,11 @@ export async function GET() {
       },
     });
   } catch (error: any) {
+    if (error?.digest) throw error;
     return NextResponse.json(
       { error: error?.message || "Failed to get OneDrive status" },
       { status: 500 }
     );
   }
 }
+

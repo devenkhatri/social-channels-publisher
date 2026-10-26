@@ -19,6 +19,8 @@ export const metadata: Metadata = {
   description: "Automated multi-channel publishing to LinkedIn, YouTube, Instagram, Facebook, and Skool via OneDrive and Zernio",
 };
 
+import { Suspense } from "react";
+
 export default function RootLayout({
   children,
 }: {
@@ -31,9 +33,12 @@ export default function RootLayout({
     >
       <body className="min-h-full bg-slate-950 text-slate-100 flex flex-col font-sans">
         <QueryProvider>
-          <AppShell>{children}</AppShell>
+          <Suspense fallback={null}>
+            <AppShell>{children}</AppShell>
+          </Suspense>
         </QueryProvider>
       </body>
     </html>
   );
 }
+

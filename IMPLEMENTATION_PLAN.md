@@ -387,7 +387,7 @@ PATCH /me/drive/items/{id}          → rename folder (append "-Done" on publish
 ### Phase 3: Content Sync & Extraction
 **Estimated effort: 2-3 days**
 
-- [ ] Content sync service
+- [x] Content sync service
   - `POST /api/sync` → trigger full sync from OneDrive
   - Enumerate all subfolders inside the selected parent folder
   - For each subfolder:
@@ -405,13 +405,13 @@ PATCH /me/drive/items/{id}          → rename folder (append "-Done" on publish
       - **Natural Numeric Sort**: Parse slide indices and sort in ascending order (`1, 2, ... 9, 10, 16`)
       - Store slide count and slide metadata
     - Create/update `content_items` record (upsert based on `drive_item_id`)
-- [ ] Markdown extraction service
+- [x] Markdown extraction service
   - Parse `caption.md` → extract title (first `# Heading`) and body (remaining markdown)
   - Parse `linkedin-post.md` → extract title and body
   - Parse `skool-post.md` → extract title and body
   - Parse `cover-prompt.md` → extract image prompt for informational display
   - Use regex/marked for title/body separation
-- [ ] Channel post auto-population
+- [x] Channel post auto-population
   - For each content item, create/update 5 `channel_posts` records (one per channel):
     - **YouTube**: `caption.md` title + body, media_type = 'video' (`*-hyperframes.mp4`)
     - **LinkedIn**: `linkedin-post.md` title + body, media_type = 'pdf' (`*.pdf` native carousel)
@@ -419,8 +419,8 @@ PATCH /me/drive/items/{id}          → rename folder (append "-Done" on publish
     - **Facebook**: `caption.md` body, media_type = 'video_reel' (`*-hyperframes.mp4`) OR 'carousel' (`slides/*.svg`)
     - **Skool**: `skool-post.md` title + body, media_type = null (manual copy-paste)
   - Preserve user edits on re-sync (do not overwrite fields modified by the user)
-- [ ] Sync status tracking (last synced timestamp, new/changed items count)
-- [ ] Content list API
+- [x] Sync status tracking (last synced timestamp, new/changed items count)
+- [x] Content list API
   - `GET /api/content` → paginated list of content items with channel statuses, filtered by `is_done`
   - `GET /api/content/[id]` → single content item with all channel posts, slide list, and media info
 
@@ -429,7 +429,7 @@ PATCH /me/drive/items/{id}          → rename folder (append "-Done" on publish
 ### Phase 4: Content Dashboard & Browser
 **Estimated effort: 3-4 days**
 
-- [ ] Dashboard page (`/`) — **Analytics-rich, not a simple list**
+- [x] Dashboard page (`/`) — **Analytics-rich, not a simple list**
   - **Prominent Filter Tabs**:
     - **"Unpublished" [Default View]** — Shows only folders without `-Done`, keeping focus on content ready to be published
     - **"Published (-Done)"** — Archive of already published folders
@@ -444,7 +444,7 @@ PATCH /me/drive/items/{id}          → rename folder (append "-Done" on publish
   - **Last refreshed datetime** — displayed prominently with relative time ("Just now", "5 minutes ago") and exact timestamp on hover
   - **Quick sync button** — with animated pulse during sync, progress counter, and toast
   - **Recent activity feed** — chronological log of publish events, folder renames, and errors
-- [ ] Content browser page (`/content`)
+- [x] Content browser page (`/content`)
   - **Status filter tabs**: [Unpublished] | [Published (-Done)] | [All]
   - **Grid / List view toggle** with user preference persistence
   - Each content card features:
@@ -468,7 +468,7 @@ PATCH /me/drive/items/{id}          → rename folder (append "-Done" on publish
   - **Search**: Instant search across titles, folder names, and post body snippets
   - **Bulk actions**: Multi-select → Publish all to selected channels, or Batch Mark as Done
   - **Pagination**: 10, 25, or 50 items per page with smooth transitions
-- [ ] Sync controls
+- [x] Sync controls
   - Manual sync with live folder processing counter
   - Persistent sync status indicator in header navigation
 
@@ -477,13 +477,13 @@ PATCH /me/drive/items/{id}          → rename folder (append "-Done" on publish
 ### Phase 5: Per-Channel Content Editor
 **Estimated effort: 3-4 days**
 
-- [ ] Content detail page (`/content/[id]`)
+- [x] Content detail page (`/content/[id]`)
   - Header: content title, folder name, sync status
   - Tab bar for each channel: YouTube | LinkedIn | Instagram | Facebook | Skool
   - Per-channel editor panel:
     - **Title field** (editable text input)
-    - **Body field** (TipTap rich text editor)
-    - **Media preview** (video player for .mp4, PDF viewer/carousel for .pdf)
+    - **Body field** (rich text / markdown editor)
+    - **Media preview** (video player for .mp4, PDF viewer/carousel for .pdf, SVG slide carousel)
     - **Post type selector** (for Instagram/Facebook: Reel vs Carousel)
     - **Zernio account selector** (dropdown of configured accounts)
     - **Zernio profile selector** (dropdown of profiles for the selected account + platform)
@@ -491,29 +491,29 @@ PATCH /me/drive/items/{id}          → rename folder (append "-Done" on publish
     - **Publish button** (per channel)
     - **Status badge** (draft / scheduled / publishing / published / failed)
   - Side-by-side preview showing how the post will appear on each platform
-- [ ] Skool channel specifics
+- [x] Skool channel specifics
   - Read-only "manual" badge
   - Copy-to-clipboard button for title and body
   - No Zernio account or publish button
-- [ ] Auto-save on edit (debounced save to DB)
-- [ ] Reset to original (re-extract from .md) button
+- [x] Auto-save on edit (debounced save to DB)
+- [x] Reset to original (re-extract from .md) button
 
 ---
 
 ### Phase 6: Zernio Account Management
 **Estimated effort: 1-2 days**
 
-- [ ] Settings page for Zernio accounts (`/settings/zernio`)
+- [x] Settings page for Zernio accounts (`/settings/zernio`)
   - Add new account: name + API key input
   - Encrypted storage of API keys in DB
   - List all configured accounts with edit/delete
   - "Test Connection" button per account (calls Zernio API to verify key)
-- [ ] Profile discovery
+- [x] Profile discovery
   - `POST /api/zernio/[accountId]/discover` → call Zernio API to list connected profiles
   - Store discovered profiles in `zernio_profiles` table
   - Show per-account: which platforms are connected, profile names/avatars
   - "Refresh Profiles" button
-- [ ] Profile assignment
+- [x] Profile assignment
   - On content editor, dropdown shows profiles matching the channel's platform
   - Grouped by Zernio account name
 
@@ -527,7 +527,7 @@ GET /v1/profiles → list all connected social profiles for an API key
 ### Phase 7: Publishing Engine
 **Estimated effort: 3-4 days**
 
-- [ ] Media upload service
+- [x] Media upload service
   1. Download file from OneDrive (via MS Graph API `GET /me/drive/items/{id}/content`)
   2. For vector carousel slides (`slides/*.svg`):
      - Rasterize `.svg` to crisp high-res 1080×1350 / 1080×1080 PNG buffer using `@resvg/resvg-js`
@@ -539,7 +539,7 @@ GET /v1/profiles → list all connected social profiles for an API key
   - Handle large video streaming and progress updates
   - Cache uploaded media URLs by hash to avoid redundant re-uploads
 
-- [ ] Publish orchestrator per channel:
+- [x] Publish orchestrator per channel:
 
   **YouTube:**
   ```json
@@ -592,7 +592,7 @@ GET /v1/profiles → list all connected social profiles for an API key
   - Reel: Video payload with `postType: "reel"`
   - Carousel: Multi-image payload with rasterized slide URLs
 
-- [ ] **Post-Publish OneDrive Folder Rename Workflow (`-Done` Suffix)**
+- [x] **Post-Publish OneDrive Folder Rename Workflow (`-Done` Suffix)**
   - When all selected channels publish successfully (or user clicks "Publish All & Mark Done" / "Mark as Published"):
   1. Call Microsoft Graph API: `PATCH /me/drive/items/{drive_item_id}`
      ```json
@@ -606,18 +606,19 @@ GET /v1/profiles → list all connected social profiles for an API key
   4. Content immediately shifts from the **Unpublished** tab to the **Published (-Done)** archive
   - Settings option: `auto_rename_onedrive_on_publish` (default: true)
 
-- [ ] Scheduling support
+- [x] Scheduling support
   - If `scheduledFor` is set, pass ISO timestamp to Zernio API
   - Update `channel_posts.status` to 'scheduled'
   - Note: Folder rename to `-Done` is executed immediately or scheduled once the future publish is verified
 
-- [ ] Error handling & retry
+- [x] Error handling & retry
   - Capture Zernio API errors and store in `channel_posts.error_message`
   - Set status to 'failed' with detailed diagnostic message
   - Retry button on failed posts
 
-- [ ] Idempotency
+- [x] Idempotency
   - Generate `Idempotency-Key` (UUID) per publish attempt to avoid duplicate posts
+
 
 - [ ] Publish status tracking
   - Real-time status updates via polling or SSE

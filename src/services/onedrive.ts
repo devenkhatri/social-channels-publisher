@@ -278,3 +278,112 @@ export async function renameFolder(itemId: string, newName: string): Promise<{ i
 export async function disconnectOneDrive(): Promise<void> {
   await db.delete(schema.oauthTokens).where(eq(schema.oauthTokens.provider, "microsoft"));
 }
+
+export interface DriveChildItem {
+  id: string;
+  name: string;
+  isFolder: boolean;
+  size?: number;
+  webUrl: string;
+  downloadUrl?: string;
+  mimeType?: string;
+  childCount?: number;
+}
+
+/**
+ * Lists all children (files and subfolders) inside a given folder ID
+ */
+export async function listFolderChildren(folderId: string): Promise<DriveChildItem[]> {
+  const client = await getGraphClient();
+  const endpoint = !folderId || folderId === "root"
+    ? "/me/drive/root/children"
+    : `/me/drive/items/${folderId}/children`;
+
+  const res = await client
+    .api(endpoint)
+    .select("id,name,file,folder,size,webUrl,@microsoft.graph.downloadUrl")
+    .top(200)
+    .get();
+
+  return (res.value || []).map((item: any) => ({
+    id: item.id,
+    name: item.name,
+    isFolder: Boolean(item.folder),
+    size: item.size,
+    webUrl: item.webUrl,
+    downloadUrl: item["@microsoft.graph.downloadUrl"],
+    mimeType: item.file?.mimeType,
+    childCount: item.folder?.childCount,
+  }));
+}
+
+/**
+ * Fetches the text content of a file in OneDrive (e.g. .md, .txt)
+ */
+export async function getFileContentAsText(itemId: string, downloadUrl?: string): Promise<string> {
+  // If downloadUrl is present, fetch directly from CDN
+  if (downloadUrl) {
+    try {
+      const res = await fetch(downloadUrl);
+      if (res.ok) {
+        return await res.text();
+      }
+    } catch {
+      // Fallback to Graph API if CDN fetch fails
+    }
+  }
+
+  // Fallback to Graph API /content
+  const token = await getValidAccessToken();
+  if (!token) {
+    throw new Error("No active Microsoft OneDrive token");
+  }
+
+  const res = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${itemId}/content`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch file content for item ${itemId}: ${res.statusText}`);
+  }
+
+  return await res.text();
+}
+
+/**
+ * Fetches binary buffer of a file in OneDrive (e.g. for SVG rasterization or uploads)
+ */
+export async function getFileBuffer(itemId: string, downloadUrl?: string): Promise<Buffer> {
+  if (downloadUrl) {
+    try {
+      const res = await fetch(downloadUrl);
+      if (res.ok) {
+        const arrayBuf = await res.arrayBuffer();
+        return Buffer.from(arrayBuf);
+      }
+    } catch {
+      // Fallback to Graph API
+    }
+  }
+
+  const token = await getValidAccessToken();
+  if (!token) {
+    throw new Error("No active Microsoft OneDrive token");
+  }
+
+  const res = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${itemId}/content`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch file buffer for item ${itemId}: ${res.statusText}`);
+  }
+
+  const arrayBuf = await res.arrayBuffer();
+  return Buffer.from(arrayBuf);
+}
+
