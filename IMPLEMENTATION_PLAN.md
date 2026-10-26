@@ -633,25 +633,25 @@ GET /v1/profiles → list all connected social profiles for an API key
 ### Phase 8: Polish & Production Readiness
 **Estimated effort: 3-4 days**
 
-- [ ] **Professional UI polish** — no AI-slop
+- [x] **Professional UI polish** — no AI-slop
   - Consistent spacing, typography, and color system across all pages
   - Custom branded loading states (skeleton screens, not spinners everywhere)
   - Proper empty states with onboarding guidance
   - Subtle micro-animations (page transitions, card hover effects, status changes)
   - Professional iconography (Lucide icons, consistent sizing)
-- [ ] **Mobile-first responsive QA**
+- [x] **Mobile-first responsive QA**
   - Test and refine all views at 375px, 768px, and 1440px breakpoints
   - Bottom tab navigation on mobile with smooth transitions
   - Touch-friendly controls (44px min tap targets, swipe gestures where appropriate)
   - Responsive data tables (card layout on mobile, table on desktop)
-- [ ] Error boundaries and loading states across all pages
-- [ ] Toast notifications for publish success/failure
-- [ ] Dark mode support (toggle in settings, system preference detection)
-- [ ] Activity log (record all publish attempts with timestamps)
-- [ ] Bulk publish (select multiple content items → publish all channels at once)
-- [ ] Environment variable documentation
-- [ ] Docker support for self-hosting
-- [ ] README with setup instructions
+- [x] Error boundaries and loading states across all pages
+- [x] Toast notifications for publish success/failure
+- [x] Dark mode support (high-contrast SaaS dark theme)
+- [x] Activity log (record all publish, sync, rename, and error attempts with timestamps at `/activity`)
+- [x] Bulk publish & batch mark done (select multiple content items → floating dock with batch actions)
+- [x] Environment variable documentation
+- [x] Docker support for self-hosting (Dockerfile and docker-compose.yml)
+- [x] README with setup instructions and architecture diagram
 
 ---
 
