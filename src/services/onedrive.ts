@@ -330,7 +330,9 @@ export async function listFolderChildren(folderId: string): Promise<DriveChildIt
     isFolder: Boolean(item.folder),
     size: item.size,
     webUrl: item.webUrl,
-    downloadUrl: item["@microsoft.graph.downloadUrl"],
+    downloadUrl:
+      item["@microsoft.graph.downloadUrl"] ||
+      (!item.folder ? `/api/onedrive/media/${item.id}?name=${encodeURIComponent(item.name)}` : undefined),
     mimeType: item.file?.mimeType,
     childCount: item.folder?.childCount,
   }));
@@ -341,8 +343,8 @@ export async function listFolderChildren(folderId: string): Promise<DriveChildIt
  * Fetches the text content of a file in OneDrive (e.g. .md, .txt)
  */
 export async function getFileContentAsText(itemId: string, downloadUrl?: string): Promise<string> {
-  // If downloadUrl is present, fetch directly from CDN
-  if (downloadUrl) {
+  // If downloadUrl is present and absolute HTTP, fetch directly from CDN
+  if (downloadUrl && downloadUrl.startsWith("http")) {
     try {
       const res = await fetch(downloadUrl);
       if (res.ok) {
@@ -376,7 +378,7 @@ export async function getFileContentAsText(itemId: string, downloadUrl?: string)
  * Fetches binary buffer of a file in OneDrive (e.g. for SVG rasterization or uploads)
  */
 export async function getFileBuffer(itemId: string, downloadUrl?: string): Promise<Buffer> {
-  if (downloadUrl) {
+  if (downloadUrl && downloadUrl.startsWith("http")) {
     try {
       const res = await fetch(downloadUrl);
       if (res.ok) {

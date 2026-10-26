@@ -10,11 +10,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "accountId is required." }, { status: 400 });
     }
 
-    const count = await discoverProfiles(accountId);
+    const result = await discoverProfiles(accountId);
+    const channelsList = result.availableChannels
+      .map((c) => c.charAt(0).toUpperCase() + c.slice(1))
+      .join(", ");
+    const channelSuffix = channelsList ? ` (${channelsList})` : "";
+
     return NextResponse.json({
       success: true,
-      message: `Discovered and synchronized ${count} profile(s).`,
-      count,
+      message: `Synchronized ${result.profilesCount} profile(s) and ${result.connectionsCount} active connection(s)${channelSuffix}.`,
+      ...result,
     });
   } catch (error: any) {
     if (error?.digest) throw error;

@@ -5,6 +5,7 @@ import {
   uploadMediaToZernio,
   publishPostToZernio,
   ZernioPublishPayload,
+  ZernioMediaItem,
 } from "./zernio";
 import {
   listFolderChildren,
@@ -75,33 +76,68 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
     };
   }
 
-  // 1. Resolve Zernio Account & Profile
+  // 1. Resolve Zernio Account, Profile & Connection
   let zernioAccountId = post.zernioAccountId;
   let zernioProfileId = post.zernioProfileId;
+  let zernioConnectionId = post.zernioConnectionId;
 
-  const allProfiles = await db.select().from(schema.zernioProfiles);
-  const matchingProfiles = allProfiles.filter(
-    (p) => p.platform.toLowerCase() === post.channel.toLowerCase()
+  const allConnections = await db.select().from(schema.zernioConnections);
+  const matchingConnections = allConnections.filter(
+    (c) => c.platform.toLowerCase() === post.channel.toLowerCase() && c.isActive === 1
   );
 
-  if (!zernioProfileId) {
-    if (matchingProfiles.length === 0) {
-      throw new Error(
-        `No connected ${post.channel} profile found. Please add a Zernio account and connect ${post.channel} in Settings.`
-      );
-    }
-    const defaultProfile = matchingProfiles[0];
-    zernioProfileId = defaultProfile.id;
-    zernioAccountId = defaultProfile.zernioAccountId;
+  let targetConnection: (typeof schema.zernioConnections.$inferSelect) | undefined;
+
+  // 1a. Try finding by explicit connection ID
+  if (zernioConnectionId) {
+    targetConnection = allConnections.find((c) => c.id === zernioConnectionId);
   }
 
-  const profile = allProfiles.find((p) => p.id === zernioProfileId);
-  if (!profile) {
-    throw new Error(`Configured profile for ${post.channel} was not found.`);
+  // 1b. Check if zernioProfileId directly matched a connection (from form selection)
+  if (!targetConnection && zernioProfileId) {
+    targetConnection = allConnections.find((c) => c.id === zernioProfileId);
+  }
+
+  // 1c. If zernioProfileId is a profile, find matching connection in that profile
+  if (!targetConnection && zernioProfileId) {
+    targetConnection = matchingConnections.find((c) => c.zernioProfileId === zernioProfileId);
+  }
+
+  // 1d. If account is selected, find matching connection in that account
+  if (!targetConnection && zernioAccountId) {
+    targetConnection = matchingConnections.find((c) => c.zernioAccountId === zernioAccountId);
+  }
+
+  // 1e. Fallback to first active matching connection
+  if (!targetConnection && matchingConnections.length > 0) {
+    targetConnection = matchingConnections[0];
+  }
+
+  let targetAccountId: string;
+
+  if (targetConnection) {
+    targetAccountId = targetConnection.connectionId;
+    zernioAccountId = targetConnection.zernioAccountId;
+    zernioProfileId = targetConnection.zernioProfileId;
+    zernioConnectionId = targetConnection.id;
+  } else {
+    // Fallback to legacy zernioProfiles if any
+    const allProfiles = await db.select().from(schema.zernioProfiles);
+    const legacyProfile = allProfiles.find(
+      (p) => p.id === zernioProfileId || p.platform.toLowerCase() === post.channel.toLowerCase()
+    );
+    if (!legacyProfile) {
+      throw new Error(
+        `No active connected ${post.channel} channel found. Please add a Zernio account and connect ${post.channel} in Settings.`
+      );
+    }
+    targetAccountId = legacyProfile.profileId;
+    zernioAccountId = legacyProfile.zernioAccountId;
+    zernioProfileId = legacyProfile.id;
   }
 
   if (!zernioAccountId) {
-    zernioAccountId = profile.zernioAccountId;
+    throw new Error(`Could not determine Zernio account for ${post.channel}.`);
   }
 
   const apiKey = await getDecryptedApiKey(zernioAccountId);
@@ -111,6 +147,9 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
     .update(schema.channelPosts)
     .set({
       status: "publishing",
+      zernioAccountId,
+      zernioProfileId,
+      zernioConnectionId,
       updatedAt: new Date().toISOString(),
     })
     .where(eq(schema.channelPosts.id, post.id));
@@ -127,6 +166,7 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
   const slidesFolder = children.find((c) => c.isFolder && /^slides$/i.test(c.name));
 
   const uploadedMediaUrls: string[] = [];
+  const mediaItems: ZernioMediaItem[] = [];
 
   // Update status to publishing
   await db
@@ -148,6 +188,7 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
             "application/pdf"
           );
           uploadedMediaUrls.push(publicUrl);
+          mediaItems.push({ type: "document", url: publicUrl });
         }
       } else if (post.postType === "video" || regularVideo || hyperframesVideo) {
         const video = hyperframesVideo || regularVideo;
@@ -160,20 +201,29 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
             "video/mp4"
           );
           uploadedMediaUrls.push(publicUrl);
+          mediaItems.push({ type: "video", url: publicUrl });
         }
       }
     } else if (post.channel === "youtube") {
-      const video = hyperframesVideo || regularVideo;
-      if (video) {
-        const buffer = await getFileBuffer(video.id, video.downloadUrl);
-        const { publicUrl } = await uploadMediaToZernio(
-          apiKey,
-          buffer,
-          video.name,
-          "video/mp4"
-        );
-        uploadedMediaUrls.push(publicUrl);
+      // Find video: check if post.mediaType specifies a video name or ID, else use hyperframesVideo or regularVideo
+      let video = children.find(
+        (c) => !c.isFolder && (c.id === post.mediaType || c.name === post.mediaType)
+      );
+      if (!video) {
+        video = hyperframesVideo || regularVideo;
       }
+      if (!video) {
+        throw new Error("No MP4 video file found in this content folder. YouTube posts require video content.");
+      }
+      const buffer = await getFileBuffer(video.id, video.downloadUrl);
+      const { publicUrl } = await uploadMediaToZernio(
+        apiKey,
+        buffer,
+        video.name,
+        "video/mp4"
+      );
+      uploadedMediaUrls.push(publicUrl);
+      mediaItems.push({ type: "video", url: publicUrl });
     } else if (post.channel === "instagram" || post.channel === "facebook") {
       const isCarousel = post.postType === "carousel";
       const isReel = post.postType === "reel" || (!isCarousel && Boolean(hyperframesVideo));
@@ -198,6 +248,7 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
               "image/png"
             );
             uploadedMediaUrls.push(publicUrl);
+            mediaItems.push({ type: "image", url: publicUrl });
           } else {
             // Already a raster image
             const buffer = await getFileBuffer(slide.id, slide.downloadUrl);
@@ -208,6 +259,7 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
               "image/png"
             );
             uploadedMediaUrls.push(publicUrl);
+            mediaItems.push({ type: "image", url: publicUrl });
           }
         }
       } else if (isReel || hyperframesVideo || regularVideo) {
@@ -221,6 +273,7 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
             "video/mp4"
           );
           uploadedMediaUrls.push(publicUrl);
+          mediaItems.push({ type: "video", url: publicUrl });
         }
       }
     }
@@ -228,16 +281,19 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
     // 4. Construct payload and send to Zernio
     const payload: ZernioPublishPayload = {
       platform: post.channel as any,
-      accountId: profile.profileId,
+      accountId: targetAccountId,
       content: post.body || "",
       title: post.title || undefined,
+      mediaItems: mediaItems.length > 0 ? mediaItems : undefined,
       mediaUrls: uploadedMediaUrls.length > 0 ? uploadedMediaUrls : undefined,
       postType: post.postType as any,
       publishNow: !post.scheduledFor,
       scheduledFor: post.scheduledFor || undefined,
     };
 
+    console.log("[Publisher] Sending payload to Zernio:", JSON.stringify(payload, null, 2));
     const zernioRes = await publishPostToZernio(apiKey, payload);
+    console.log("[Publisher] Zernio publish result:", JSON.stringify(zernioRes, null, 2));
 
     // 5. Update post in DB
     const nowIso = new Date().toISOString();
@@ -246,6 +302,9 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
       .set({
         status: post.scheduledFor ? "scheduled" : "published",
         zernioPostId: zernioRes.id,
+        zernioAccountId,
+        zernioProfileId,
+        zernioConnectionId,
         publishedAt: post.scheduledFor ? null : nowIso,
         errorMessage: null,
         updatedAt: nowIso,

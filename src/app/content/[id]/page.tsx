@@ -24,6 +24,8 @@ import {
   Play,
   Share2,
   RotateCcw,
+  Image as ImageIcon,
+  Download,
 } from "lucide-react";
 
 type ChannelType = "linkedin" | "youtube" | "instagram" | "facebook" | "skool";
@@ -88,6 +90,8 @@ export default function ContentDetailPage({
   const queryClient = useQueryClient();
 
   const [activeChannel, setActiveChannel] = useState<ChannelType>("linkedin");
+  const [activeMediaTab, setActiveMediaTab] = useState<"slides" | "video" | "pdf" | "cover">("slides");
+  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{
@@ -138,12 +142,46 @@ export default function ContentDetailPage({
           title: p.title || "",
           body: p.body || "",
           postType: p.postType || "feed",
-          zernioProfileId: p.zernioProfileId || "",
+          zernioProfileId: (p as any).zernioConnectionId || p.zernioProfileId || "",
         };
       });
       setFormState(initial);
     }
   }, [data]);
+
+  // Set default media tab when activeChannel or data changes
+  useEffect(() => {
+    if (!data?.assets) return;
+    const { assets } = data;
+    const currentPostType = formState[activeChannel]?.postType;
+    if (activeChannel === "youtube") {
+      if (assets.hyperframesVideo || (assets.videos && assets.videos.length > 0)) {
+        setActiveMediaTab("video");
+      } else if (assets.slides && assets.slides.length > 0) {
+        setActiveMediaTab("slides");
+      }
+    } else if (activeChannel === "linkedin") {
+      if (assets.slides && assets.slides.length > 0) {
+        setActiveMediaTab("slides");
+      } else if (assets.pdfs && assets.pdfs.length > 0) {
+        setActiveMediaTab("pdf");
+      }
+    } else if (activeChannel === "instagram" || activeChannel === "facebook") {
+      if (currentPostType === "reel" && (assets.hyperframesVideo || (assets.videos && assets.videos.length > 0))) {
+        setActiveMediaTab("video");
+      } else if (assets.slides && assets.slides.length > 0) {
+        setActiveMediaTab("slides");
+      }
+    } else {
+      if (assets.slides && assets.slides.length > 0) {
+        setActiveMediaTab("slides");
+      } else if (assets.hyperframesVideo || (assets.videos && assets.videos.length > 0)) {
+        setActiveMediaTab("video");
+      } else if (assets.pdfs && assets.pdfs.length > 0) {
+        setActiveMediaTab("pdf");
+      }
+    }
+  }, [activeChannel, data, formState]);
 
   const currentPost = data?.posts.find((p) => p.channel === activeChannel);
   const currentForm = formState[activeChannel] || {
@@ -199,11 +237,15 @@ export default function ContentDetailPage({
     mutationFn: async () => {
       if (!currentPost) return;
       // First save current form
-      await fetch(`/api/posts/${currentPost.id}`, {
+      const saveRes = await fetch(`/api/posts/${currentPost.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(currentForm),
       });
+      if (!saveRes.ok) {
+        const errJson = await saveRes.json();
+        throw new Error(errJson.error || "Failed to save draft before publishing");
+      }
 
       const res = await fetch("/api/zernio/publish", {
         method: "POST",
@@ -350,25 +392,52 @@ export default function ContentDetailPage({
   const { item, assets, posts } = data;
   const slides = assets.slides || [];
   const hyperframesVideo = assets.hyperframesVideo;
-  const regularVideo = assets.videos.find((v) => v.id !== hyperframesVideo?.id);
-  const pdfFile = assets.pdfs[0];
+  const allVideos: any[] = [];
+  if (hyperframesVideo) {
+    allVideos.push(hyperframesVideo);
+  }
+  (assets.videos || []).forEach((v: any) => {
+    if (!allVideos.some((x) => x.id === v.id)) {
+      allVideos.push(v);
+    }
+  });
+  const activeVideo = allVideos.find((v) => v.id === selectedVideoId) || allVideos[0];
+  const pdfFile = assets.pdfs?.[0] || null;
+  const coverFile = assets.coverFile || null;
 
-  // Filter profiles for this channel
+  // Filter profiles & active connections for this channel
   const matchingProfiles: Array<{
     id: string;
     profileId: string;
     profileName: string;
     accountName: string;
+    handle?: string | null;
+    avatar?: string | null;
   }> = [];
 
-  (accountsData || []).forEach((acc) => {
+  (accountsData || []).forEach((acc: any) => {
     (acc.profiles || []).forEach((p: any) => {
-      if (p.platform?.toLowerCase() === activeChannel.toLowerCase()) {
+      // Check connections inside profile
+      if (Array.isArray(p.connections) && p.connections.length > 0) {
+        p.connections.forEach((conn: any) => {
+          if (conn.platform?.toLowerCase() === activeChannel.toLowerCase() && conn.isActive) {
+            matchingProfiles.push({
+              id: conn.id,
+              profileId: conn.connectionId,
+              profileName: conn.displayName || conn.username || p.name,
+              handle: conn.username,
+              avatar: conn.profilePicture,
+              accountName: `${acc.name} • ${p.name}`,
+            });
+          }
+        });
+      } else if (p.platform?.toLowerCase() === activeChannel.toLowerCase()) {
         matchingProfiles.push({
           id: p.id,
           profileId: p.profileId,
           profileName: p.profileName || `${acc.name} - ${p.platform}`,
           accountName: acc.name,
+          avatar: p.profileAvatar,
         });
       }
     });
@@ -567,23 +636,86 @@ export default function ContentDetailPage({
                 Folder Media Assets
               </span>
               <span className="text-slate-500 text-[11px]">
-                {slides.length} slides • {assets.videos.length} videos • {assets.pdfs.length} pdfs
+                {slides.length} slides • {allVideos.length} videos • {assets.pdfs.length} pdfs
               </span>
             </div>
 
-            {/* Carousel / Slide Preview (for Instagram, Facebook, or when viewing slides) */}
-            {slides.length > 0 &&
-            (activeChannel === "instagram" ||
-              activeChannel === "facebook" ||
-              currentForm.postType === "carousel" ||
-              (!hyperframesVideo && !pdfFile)) ? (
+            {/* Media Type Tabs Switcher */}
+            <div className="flex items-center gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800">
+              {slides.length > 0 && (
+                <button
+                  id="media-tab-slides"
+                  type="button"
+                  onClick={() => setActiveMediaTab("slides")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
+                    activeMediaTab === "slides"
+                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Slides</span>
+                  <span className="text-[10px] opacity-75">({slides.length})</span>
+                </button>
+              )}
+              {allVideos.length > 0 && (
+                <button
+                  id="media-tab-video"
+                  type="button"
+                  onClick={() => setActiveMediaTab("video")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
+                    activeMediaTab === "video"
+                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <Video className="w-3.5 h-3.5" />
+                  <span>Video</span>
+                  <span className="text-[10px] opacity-75">({allVideos.length})</span>
+                </button>
+              )}
+              {pdfFile && (
+                <button
+                  id="media-tab-pdf"
+                  type="button"
+                  onClick={() => setActiveMediaTab("pdf")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
+                    activeMediaTab === "pdf"
+                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>PDF</span>
+                </button>
+              )}
+              {coverFile && (
+                <button
+                  id="media-tab-cover"
+                  type="button"
+                  onClick={() => setActiveMediaTab("cover")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
+                    activeMediaTab === "cover"
+                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  <span>Cover</span>
+                </button>
+              )}
+            </div>
+
+            {/* TAB CONTENT: 1. Slides Carousel */}
+            {activeMediaTab === "slides" && slides.length > 0 && (
               <div className="space-y-3">
-                <div className="relative aspect-[4/5] sm:aspect-square bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
+                <div className="relative aspect-[4/5] sm:aspect-square bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center shadow-inner">
                   {slides[currentSlideIndex]?.downloadUrl ? (
                     <img
+                      id="slide-preview-image"
                       src={slides[currentSlideIndex].downloadUrl}
                       alt={`Slide ${currentSlideIndex + 1}`}
-                      className="w-full h-full object-contain p-2"
+                      className="w-full h-full object-contain p-2 select-none"
                     />
                   ) : (
                     <div className="text-center p-6 text-slate-500">
@@ -594,28 +726,34 @@ export default function ContentDetailPage({
 
                   {/* Navigation controls */}
                   <button
+                    id="slide-prev-btn"
+                    type="button"
                     onClick={() =>
                       setCurrentSlideIndex((prev) =>
                         prev > 0 ? prev - 1 : slides.length - 1
                       )
                     }
-                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur transition-all"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/70 hover:bg-black/90 text-white backdrop-blur transition-all shadow-lg"
+                    title="Previous Slide"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
 
                   <button
+                    id="slide-next-btn"
+                    type="button"
                     onClick={() =>
                       setCurrentSlideIndex((prev) =>
                         prev < slides.length - 1 ? prev + 1 : 0
                       )
                     }
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur transition-all"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/70 hover:bg-black/90 text-white backdrop-blur transition-all shadow-lg"
+                    title="Next Slide"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
 
-                  <div className="absolute bottom-2 left-1/2 -translate-y-1/2 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur text-[10px] text-white font-mono">
+                  <div className="absolute bottom-2 left-1/2 -translate-y-1/2 px-2.5 py-1 rounded-full bg-black/80 backdrop-blur text-[10px] text-white font-mono shadow">
                     Slide {currentSlideIndex + 1} of {slides.length}
                   </div>
                 </div>
@@ -625,10 +763,12 @@ export default function ContentDetailPage({
                   {slides.map((s, idx) => (
                     <button
                       key={s.id}
+                      id={`slide-thumb-${idx}`}
+                      type="button"
                       onClick={() => setCurrentSlideIndex(idx)}
                       className={`shrink-0 w-12 h-14 rounded-lg overflow-hidden border transition-all ${
                         currentSlideIndex === idx
-                          ? "border-indigo-500 ring-2 ring-indigo-500/30"
+                          ? "border-indigo-500 ring-2 ring-indigo-500/30 scale-105"
                           : "border-slate-800 opacity-60 hover:opacity-100"
                       }`}
                     >
@@ -646,61 +786,220 @@ export default function ContentDetailPage({
                     </button>
                   ))}
                 </div>
+
+                {/* Slide Info & Quick Actions */}
+                <div className="flex items-center justify-between text-[11px] text-slate-400 px-1 pt-1 border-t border-slate-800/60">
+                  <span className="font-mono truncate max-w-[200px]">
+                    {slides[currentSlideIndex]?.name}
+                  </span>
+                  {slides[currentSlideIndex]?.downloadUrl && (
+                    <a
+                      href={slides[currentSlideIndex].downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                    >
+                      <span>Full view</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
               </div>
-            ) : hyperframesVideo ? (
-              /* Video Preview (for YouTube, Instagram Reels, Facebook Reels) */
-              <div className="space-y-2">
-                <div className="aspect-[9/16] max-h-96 mx-auto bg-black rounded-xl overflow-hidden border border-slate-800 relative">
-                  {hyperframesVideo.downloadUrl ? (
+            )}
+
+            {/* TAB CONTENT: 2. Video Player */}
+            {activeMediaTab === "video" && allVideos.length > 0 && activeVideo && (
+              <div className="space-y-3">
+                {/* Video Selector if multiple videos */}
+                {allVideos.length > 1 && (
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                    {allVideos.map((v) => (
+                      <button
+                        key={v.id}
+                        id={`video-select-${v.id}`}
+                        type="button"
+                        onClick={() => setSelectedVideoId(v.id)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all flex items-center gap-1.5 shrink-0 ${
+                          activeVideo.id === v.id
+                            ? "bg-indigo-600 text-white border-indigo-500 shadow-sm"
+                            : "bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200"
+                        }`}
+                      >
+                        <Play className="w-3 h-3" />
+                        <span className="truncate max-w-[140px]">{v.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Video Player */}
+                <div className="aspect-[9/16] max-h-[440px] mx-auto bg-black rounded-xl overflow-hidden border border-slate-800 relative flex items-center justify-center shadow-lg">
+                  {activeVideo.downloadUrl ? (
                     <video
-                      src={hyperframesVideo.downloadUrl}
+                      id="video-player"
+                      key={activeVideo.id}
+                      src={activeVideo.downloadUrl}
                       controls
                       playsInline
+                      preload="metadata"
                       className="w-full h-full object-contain"
                     />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 p-6 text-center">
                       <Play className="w-8 h-8 mb-2 opacity-50" />
-                      <p className="text-xs">Hyperframes Video</p>
-                      <p className="text-[10px] font-mono mt-1 text-slate-600">
-                        {hyperframesVideo.name}
-                      </p>
+                      <p className="text-xs">Video preview loading...</p>
                     </div>
                   )}
                 </div>
-                <div className="text-[11px] font-mono text-slate-400 text-center">
-                  📹 {hyperframesVideo.name}
+
+                {/* Video Info & Download */}
+                <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-slate-200 truncate font-mono">
+                      {activeVideo.name}
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      {activeVideo.name.includes("-hyperframes") ? "Hyperframes Vertical Video" : "Video Asset"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <a
+                      href={`${activeVideo.downloadUrl}&download=1`}
+                      className="px-2.5 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 text-xs font-medium border border-indigo-500/30 flex items-center gap-1"
+                      title="Download Video"
+                    >
+                      <Download className="w-3 h-3" />
+                      <span>Download</span>
+                    </a>
+                  </div>
                 </div>
               </div>
-            ) : pdfFile ? (
-              /* PDF Document Card (LinkedIn native carousel) */
-              <div className="p-6 rounded-xl bg-slate-950 border border-slate-800 text-center space-y-3">
-                <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto">
-                  <FileText className="w-6 h-6" />
+            )}
+
+            {/* TAB CONTENT: 3. PDF Document Viewer */}
+            {activeMediaTab === "pdf" && pdfFile && (
+              <div className="space-y-3">
+                <div className="relative aspect-[4/5] sm:aspect-square bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex flex-col shadow-inner">
+                  {pdfFile.downloadUrl ? (
+                    <object
+                      id="pdf-object-viewer"
+                      data={`${pdfFile.downloadUrl}#toolbar=0&navpanes=0`}
+                      type="application/pdf"
+                      className="w-full h-full rounded-xl"
+                    >
+                      <iframe
+                        id="pdf-preview-frame"
+                        src={`${pdfFile.downloadUrl}#toolbar=0&navpanes=0`}
+                        title={pdfFile.name}
+                        className="w-full h-full border-0 bg-white/5 rounded-xl"
+                      />
+                    </object>
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-slate-500">
+                      <FileText className="w-10 h-10 mb-2 opacity-50 text-blue-400" />
+                      <p className="text-xs">PDF preview not available</p>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <h4 className="text-xs font-semibold text-white">
-                    {pdfFile.name}
-                  </h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    LinkedIn Native Document Carousel
-                  </p>
+
+                {/* PDF Info & Download Bar */}
+                <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-slate-200 truncate font-mono">
+                      {pdfFile.name}
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      LinkedIn Native Document Carousel
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {slides.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveMediaTab("slides")}
+                        className="px-2.5 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 text-xs font-medium border border-indigo-500/30 flex items-center gap-1"
+                        title="View slides carousel"
+                      >
+                        <Layers className="w-3 h-3" />
+                        <span>Slides ({slides.length})</span>
+                      </button>
+                    )}
+                    <a
+                      href={pdfFile.downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 flex items-center gap-1"
+                      title="Open in new window"
+                    >
+                      <span>Open</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                    <a
+                      href={`${pdfFile.downloadUrl}&download=1`}
+                      className="px-2.5 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 text-xs font-medium border border-indigo-500/30 flex items-center gap-1"
+                      title="Download PDF"
+                    >
+                      <Download className="w-3 h-3" />
+                      <span>Download</span>
+                    </a>
+                  </div>
                 </div>
-                {pdfFile.downloadUrl && (
-                  <a
-                    href={pdfFile.downloadUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700"
-                  >
-                    <span>Download / View PDF</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                )}
               </div>
-            ) : (
+            )}
+
+            {/* TAB CONTENT: 4. Cover Image */}
+            {activeMediaTab === "cover" && coverFile && (
+              <div className="space-y-3">
+                <div className="relative aspect-[16/9] sm:aspect-square bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center shadow-inner">
+                  {coverFile.downloadUrl ? (
+                    <img
+                      src={coverFile.downloadUrl}
+                      alt={coverFile.name}
+                      className="w-full h-full object-contain p-2"
+                    />
+                  ) : (
+                    <div className="text-center p-6 text-slate-500">
+                      <ImageIcon className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                      <p className="text-xs">Cover preview not available</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-slate-200 truncate font-mono">
+                      {coverFile.name}
+                    </p>
+                    <p className="text-[11px] text-slate-500">Cover Graphic</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <a
+                      href={coverFile.downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 flex items-center gap-1"
+                      title="Open in new window"
+                    >
+                      <span>Open</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                    <a
+                      href={`${coverFile.downloadUrl}&download=1`}
+                      className="px-2.5 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 text-xs font-medium border border-indigo-500/30 flex items-center gap-1"
+                      title="Download Cover"
+                    >
+                      <Download className="w-3 h-3" />
+                      <span>Download</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Empty state if folder has no media files */}
+            {slides.length === 0 && allVideos.length === 0 && !pdfFile && !coverFile && (
               <div className="p-8 text-center text-slate-500 text-xs">
-                No media file available for preview.
+                No media files (slides, video, pdf, or cover) found in this folder.
               </div>
             )}
           </div>
@@ -934,21 +1233,25 @@ export default function ContentDetailPage({
                     }
                     className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
                   >
-                    <option value="">Default ({matchingProfiles[0].profileName})</option>
+                    <option value="">
+                      Default ({matchingProfiles[0].profileName}
+                      {matchingProfiles[0].handle ? ` - @${matchingProfiles[0].handle.replace(/^@/, "")}` : ""})
+                    </option>
                     {matchingProfiles.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.accountName} • {p.profileName}
+                        {p.accountName} → {p.profileName}
+                        {p.handle ? ` (@${p.handle.replace(/^@/, "")})` : ""}
                       </option>
                     ))}
                   </select>
                 ) : (
                   <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center justify-between">
-                    <span>No connected {activeChannel} profile in Zernio</span>
+                    <span>No active connected {activeChannel} channel found in Zernio</span>
                     <Link
                       href="/settings/zernio"
                       className="text-xs underline font-medium hover:text-white"
                     >
-                      Connect Profile
+                      Connect Channel in Settings
                     </Link>
                   </div>
                 )}

@@ -7,6 +7,7 @@ import { renameFolder } from "@/services/onedrive";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log("[Publish API] Received body:", JSON.stringify(body));
     const { postId, contentItemId, markDoneOnly } = body;
 
     // Direct Mark as Done & Rename on OneDrive
@@ -59,7 +60,9 @@ export async function POST(request: NextRequest) {
 
     // Publish single post
     if (postId) {
+      console.log("[Publish API] Publishing single post:", postId);
       const result = await publishChannelPost(postId);
+      console.log("[Publish API] Publish single post result:", JSON.stringify(result));
       return NextResponse.json(result);
     }
 

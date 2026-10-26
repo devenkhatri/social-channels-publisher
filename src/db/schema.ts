@@ -23,10 +23,33 @@ export const zernioProfiles = sqliteTable("zernio_profiles", {
   zernioAccountId: text("zernio_account_id")
     .notNull()
     .references(() => zernioAccounts.id, { onDelete: "cascade" }),
-  platform: text("platform").notNull(), // 'linkedin' | 'youtube' | 'instagram' | 'facebook'
-  profileId: text("profile_id").notNull(),
+  platform: text("platform").notNull().default("profile"), // backward-compatible
+  profileId: text("profile_id").notNull(), // Zernio profile _id
   profileName: text("profile_name"),
   profileAvatar: text("profile_avatar"),
+  isDefault: integer("is_default").default(0),
+  color: text("color"),
+  createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+// 3b. Discovered Zernio connections (active social accounts connected to a profile)
+export const zernioConnections = sqliteTable("zernio_connections", {
+  id: text("id").primaryKey(), // UUID
+  zernioAccountId: text("zernio_account_id")
+    .notNull()
+    .references(() => zernioAccounts.id, { onDelete: "cascade" }),
+  zernioProfileId: text("zernio_profile_id")
+    .notNull()
+    .references(() => zernioProfiles.id, { onDelete: "cascade" }),
+  connectionId: text("connection_id").notNull(), // Zernio's connected account _id (used for publishing)
+  platform: text("platform").notNull(), // 'linkedin' | 'youtube' | 'instagram' | 'facebook' | etc.
+  username: text("username"),
+  displayName: text("display_name"),
+  profilePicture: text("profile_picture"),
+  profileUrl: text("profile_url"),
+  isActive: integer("is_active").notNull().default(1),
+  platformStatus: text("platform_status"),
+  followersCount: integer("followers_count"),
   createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -60,6 +83,7 @@ export const channelPosts = sqliteTable("channel_posts", {
   postType: text("post_type"), // 'reel' | 'video' | 'document' | 'carousel' | 'feed'
   zernioAccountId: text("zernio_account_id").references(() => zernioAccounts.id),
   zernioProfileId: text("zernio_profile_id").references(() => zernioProfiles.id),
+  zernioConnectionId: text("zernio_connection_id").references(() => zernioConnections.id),
   status: text("status").notNull().default("draft"), // 'draft' | 'scheduled' | 'publishing' | 'published' | 'failed'
   scheduledFor: text("scheduled_for"),
   publishedAt: text("published_at"),

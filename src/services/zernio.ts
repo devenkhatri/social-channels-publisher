@@ -4,26 +4,50 @@ import { encrypt, decrypt } from "@/lib/crypto";
 
 const ZERNIO_BASE_URL = process.env.ZERNIO_BASE_URL || "https://api.zernio.com/v1";
 
+export interface ZernioConnectionView {
+  id: string;
+  connectionId: string;
+  platform: string;
+  username: string | null;
+  displayName: string | null;
+  profilePicture: string | null;
+  profileUrl: string | null;
+  isActive: boolean;
+  platformStatus: string | null;
+  followersCount: number | null;
+}
+
+export interface ZernioProfileView {
+  id: string;
+  profileId: string;
+  name: string;
+  isDefault: boolean;
+  color: string | null;
+  connectionsCount: number;
+  availableChannels: string[];
+  connections: ZernioConnectionView[];
+  // Backward compatibility
+  platform?: string;
+  profileName?: string | null;
+  profileAvatar?: string | null;
+}
+
 export interface ZernioAccountView {
   id: string;
   name: string;
   maskedApiKey: string;
   createdAt: string | null;
-  profiles: Array<{
-    id: string;
-    platform: string;
-    profileId: string;
-    profileName: string | null;
-    profileAvatar: string | null;
-  }>;
+  availableChannels: string[];
+  profiles: ZernioProfileView[];
 }
 
 /**
- * Lists all configured Zernio accounts with masked API keys and associated profiles
+ * Lists all configured Zernio accounts with masked API keys, associated profiles, and active connections
  */
 export async function getZernioAccounts(): Promise<ZernioAccountView[]> {
   const accounts = await db.select().from(schema.zernioAccounts);
   const profiles = await db.select().from(schema.zernioProfiles);
+  const connections = await db.select().from(schema.zernioConnections);
 
   return accounts.map((acc) => {
     let plainKey = "";
@@ -39,19 +63,61 @@ export async function getZernioAccounts(): Promise<ZernioAccountView[]> {
         : "••••••••";
 
     const accountProfiles = profiles.filter((p) => p.zernioAccountId === acc.id);
+    const accountConnections = connections.filter((c) => c.zernioAccountId === acc.id);
+
+    // Compute unique active channels across the account
+    const availableChannels = Array.from(
+      new Set(
+        accountConnections
+          .filter((c) => c.isActive === 1)
+          .map((c) => c.platform.toLowerCase())
+      )
+    );
 
     return {
       id: acc.id,
       name: acc.name,
       maskedApiKey,
       createdAt: acc.createdAt,
-      profiles: accountProfiles.map((p) => ({
-        id: p.id,
-        platform: p.platform,
-        profileId: p.profileId,
-        profileName: p.profileName,
-        profileAvatar: p.profileAvatar,
-      })),
+      availableChannels,
+      profiles: accountProfiles.map((p) => {
+        const profileConns = accountConnections.filter(
+          (c) => c.zernioProfileId === p.id
+        );
+        const profileChannels = Array.from(
+          new Set(
+            profileConns
+              .filter((c) => c.isActive === 1)
+              .map((c) => c.platform.toLowerCase())
+          )
+        );
+
+        return {
+          id: p.id,
+          profileId: p.profileId,
+          name: p.profileName || "Default Profile",
+          isDefault: Boolean(p.isDefault),
+          color: p.color,
+          connectionsCount: profileConns.length,
+          availableChannels: profileChannels,
+          connections: profileConns.map((c) => ({
+            id: c.id,
+            connectionId: c.connectionId,
+            platform: c.platform,
+            username: c.username,
+            displayName: c.displayName,
+            profilePicture: c.profilePicture,
+            profileUrl: c.profileUrl,
+            isActive: Boolean(c.isActive),
+            platformStatus: c.platformStatus,
+            followersCount: c.followersCount,
+          })),
+          // Backward-compat fields
+          platform: profileChannels[0] || p.platform || "profile",
+          profileName: p.profileName,
+          profileAvatar: p.profileAvatar,
+        };
+      }),
     };
   });
 }
@@ -59,7 +125,10 @@ export async function getZernioAccounts(): Promise<ZernioAccountView[]> {
 /**
  * Adds a new Zernio account with encrypted API key
  */
-export async function addZernioAccount(name: string, apiKey: string): Promise<{ id: string; name: string }> {
+export async function addZernioAccount(
+  name: string,
+  apiKey: string
+): Promise<{ id: string; name: string }> {
   if (!name.trim() || !apiKey.trim()) {
     throw new Error("Account name and API key are required.");
   }
@@ -77,18 +146,28 @@ export async function addZernioAccount(name: string, apiKey: string): Promise<{ 
   try {
     await discoverProfiles(id);
   } catch (err) {
-    console.warn("Initial profile discovery failed, can be refreshed later:", err);
+    console.warn(
+      "Initial profile discovery failed, can be refreshed later:",
+      err
+    );
   }
 
   return { id, name: name.trim() };
 }
 
 /**
- * Deletes a Zernio account and cascades to associated profiles
+ * Deletes a Zernio account and cascades to associated profiles and connections
  */
 export async function deleteZernioAccount(id: string): Promise<void> {
-  await db.delete(schema.zernioProfiles).where(eq(schema.zernioProfiles.zernioAccountId, id));
-  await db.delete(schema.zernioAccounts).where(eq(schema.zernioAccounts.id, id));
+  await db
+    .delete(schema.zernioConnections)
+    .where(eq(schema.zernioConnections.zernioAccountId, id));
+  await db
+    .delete(schema.zernioProfiles)
+    .where(eq(schema.zernioProfiles.zernioAccountId, id));
+  await db
+    .delete(schema.zernioAccounts)
+    .where(eq(schema.zernioAccounts.id, id));
 }
 
 /**
@@ -114,52 +193,78 @@ export async function testZernioConnection(apiKey: string): Promise<{
   valid: boolean;
   message: string;
   profilesCount?: number;
+  connectionsCount?: number;
+  availableChannels?: string[];
 }> {
   try {
-    const res = await fetch(`${ZERNIO_BASE_URL}/profiles`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (res.status === 401 || res.status === 403) {
-      return { valid: false, message: "Invalid Zernio API key (Unauthorized)" };
-    }
-
-    if (!res.ok) {
-      // Try fallback to /accounts if /profiles endpoint differs
-      const accountsRes = await fetch(`${ZERNIO_BASE_URL}/accounts`, {
+    const [profilesRes, accountsRes] = await Promise.all([
+      fetch(`${ZERNIO_BASE_URL}/profiles`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
-      });
+      }),
+      fetch(`${ZERNIO_BASE_URL}/accounts`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      }),
+    ]);
 
-      if (!accountsRes.ok) {
-        return {
-          valid: false,
-          message: `Zernio API returned status ${res.status}: ${res.statusText}`,
-        };
-      }
+    if (
+      profilesRes.status === 401 ||
+      profilesRes.status === 403 ||
+      accountsRes.status === 401 ||
+      accountsRes.status === 403
+    ) {
+      return { valid: false, message: "Invalid Zernio API key (Unauthorized)" };
+    }
 
-      const data = await accountsRes.json();
-      const count = Array.isArray(data) ? data.length : data?.data?.length || 0;
+    if (!profilesRes.ok && !accountsRes.ok) {
       return {
-        valid: true,
-        message: `Connected successfully! Found ${count} connected social profile(s).`,
-        profilesCount: count,
+        valid: false,
+        message: `Zernio API returned status ${profilesRes.status}: ${profilesRes.statusText}`,
       };
     }
 
-    const data = await res.json();
-    const count = Array.isArray(data) ? data.length : data?.data?.length || 0;
+    let profilesCount = 0;
+    if (profilesRes.ok) {
+      const pData = await profilesRes.json();
+      const rawList = Array.isArray(pData)
+        ? pData
+        : pData?.profiles || pData?.data || [];
+      profilesCount = rawList.length;
+    }
+
+    let connectionsCount = 0;
+    const channels: string[] = [];
+    if (accountsRes.ok) {
+      const aData = await accountsRes.json();
+      const accountsList = Array.isArray(aData)
+        ? aData
+        : aData?.accounts || aData?.data || [];
+      connectionsCount = accountsList.length;
+      accountsList.forEach((acc: any) => {
+        if (acc.platform && !channels.includes(acc.platform.toLowerCase())) {
+          channels.push(acc.platform.toLowerCase());
+        }
+      });
+    }
+
+    const channelsText =
+      channels.length > 0
+        ? ` (${channels.map((c) => c.charAt(0).toUpperCase() + c.slice(1)).join(", ")})`
+        : "";
+
     return {
       valid: true,
-      message: `Connected successfully! Found ${count} connected social profile(s).`,
-      profilesCount: count,
+      message: `Connected successfully! Found ${profilesCount} profile(s) with ${connectionsCount} active connection(s)${channelsText}.`,
+      profilesCount,
+      connectionsCount,
+      availableChannels: channels,
     };
   } catch (error: any) {
     return {
@@ -169,57 +274,212 @@ export async function testZernioConnection(apiKey: string): Promise<{
   }
 }
 
+export interface DiscoveryResult {
+  profilesCount: number;
+  connectionsCount: number;
+  availableChannels: string[];
+}
+
 /**
- * Discovers connected social profiles for a Zernio account and stores them in DB
+ * Discovers connected social profiles and active connections for a Zernio account and stores them in DB
  */
-export async function discoverProfiles(accountId: string): Promise<number> {
+export async function discoverProfiles(accountId: string): Promise<DiscoveryResult> {
   const apiKey = await getDecryptedApiKey(accountId);
 
-  let profilesData: any[] = [];
-
-  // Try /profiles endpoint
-  let res = await fetch(`${ZERNIO_BASE_URL}/profiles`, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-  });
-
-  if (!res.ok) {
-    // Fallback to /accounts endpoint
-    res = await fetch(`${ZERNIO_BASE_URL}/accounts`, {
+  // Fetch both /profiles and /accounts concurrently
+  const [profilesRes, accountsRes] = await Promise.all([
+    fetch(`${ZERNIO_BASE_URL}/profiles`, {
       headers: { Authorization: `Bearer ${apiKey}` },
+    }),
+    fetch(`${ZERNIO_BASE_URL}/accounts`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    }),
+  ]);
+
+  if (!profilesRes.ok && !accountsRes.ok) {
+    throw new Error(
+      `Failed to fetch profiles/accounts from Zernio: ${profilesRes.statusText || accountsRes.statusText}`
+    );
+  }
+
+  let rawProfiles: any[] = [];
+  if (profilesRes.ok) {
+    const json = await profilesRes.json();
+    rawProfiles = Array.isArray(json)
+      ? json
+      : json?.profiles || json?.data || [];
+  }
+
+  let rawAccounts: any[] = [];
+  if (accountsRes.ok) {
+    const json = await accountsRes.json();
+    rawAccounts = Array.isArray(json)
+      ? json
+      : json?.accounts || json?.data || [];
+  }
+
+  // If /profiles is empty but /accounts has connections, synthesize a default profile
+  if (rawProfiles.length === 0 && rawAccounts.length > 0) {
+    rawProfiles = [
+      {
+        _id: "default-profile",
+        name: "Default Profile",
+        isDefault: true,
+      },
+    ];
+  }
+
+  // Remove existing connections and profiles for this account to keep fresh sync
+  await db
+    .delete(schema.zernioConnections)
+    .where(eq(schema.zernioConnections.zernioAccountId, accountId));
+  await db
+    .delete(schema.zernioProfiles)
+    .where(eq(schema.zernioProfiles.zernioAccountId, accountId));
+
+  let insertedProfilesCount = 0;
+  let insertedConnectionsCount = 0;
+  const discoveredChannels = new Set<string>();
+  const assignedAccountIds = new Set<string>();
+
+  for (const p of rawProfiles) {
+    const zernioProfileId = String(p._id || p.id || p.profileId);
+    const profileInternalId = crypto.randomUUID();
+    const profileName = p.name || p.displayName || "Default Profile";
+    const isDefault = p.isDefault ? 1 : rawProfiles.length === 1 ? 1 : 0;
+    const color = p.color || null;
+
+    await db.insert(schema.zernioProfiles).values({
+      id: profileInternalId,
+      zernioAccountId: accountId,
+      platform: "profile",
+      profileId: zernioProfileId,
+      profileName,
+      profileAvatar: null,
+      isDefault,
+      color,
     });
-  }
+    insertedProfilesCount++;
 
-  if (!res.ok) {
-    throw new Error(`Failed to fetch profiles from Zernio: ${res.statusText}`);
-  }
+    // Find all accounts associated with this profile
+    const matchingAccounts = rawAccounts.filter((acc: any) => {
+      const accProfId =
+        typeof acc.profileId === "object" ? acc.profileId?._id : acc.profileId;
+      return (
+        accProfId === zernioProfileId ||
+        (!accProfId && rawProfiles.length === 1)
+      );
+    });
 
-  const json = await res.json();
-  profilesData = Array.isArray(json) ? json : json?.data || json?.profiles || json?.accounts || [];
+    for (const acc of matchingAccounts) {
+      const connZernioId = String(acc._id || acc.id || acc.accountId);
+      assignedAccountIds.add(connZernioId);
 
-  // Remove existing profiles for this account to keep fresh sync
-  await db.delete(schema.zernioProfiles).where(eq(schema.zernioProfiles.zernioAccountId, accountId));
+      const platform = (
+        acc.platform ||
+        acc.provider ||
+        acc.type ||
+        "unknown"
+      ).toLowerCase();
+      if (acc.isActive !== false) {
+        discoveredChannels.add(platform);
+      }
 
-  let insertedCount = 0;
-  for (const p of profilesData) {
-    const platform = (p.platform || p.provider || p.type || "unknown").toLowerCase();
-    const profileId = p.id || p.accountId || p.profileId || String(p._id);
-    const profileName = p.name || p.displayName || p.username || `${platform} Profile`;
-    const profileAvatar = p.avatarUrl || p.picture || p.image || null;
+      const username =
+        acc.username ||
+        acc.metadata?.profileData?.username ||
+        acc.metadata?.userProfile?.username ||
+        null;
+      const displayName =
+        acc.displayName ||
+        acc.metadata?.profileData?.displayName ||
+        acc.metadata?.userProfile?.displayName ||
+        username ||
+        `${platform} Channel`;
+      const profilePicture =
+        acc.profilePicture ||
+        acc.metadata?.profileData?.profilePicture ||
+        acc.metadata?.userProfile?.profilePicture ||
+        null;
+      const profileUrl =
+        acc.profileUrl ||
+        acc.metadata?.profileData?.profileUrl ||
+        acc.metadata?.userProfile?.profileUrl ||
+        null;
+      const followersCount =
+        typeof acc.followersCount === "number"
+          ? acc.followersCount
+          : typeof acc.metadata?.profileData?.followersCount === "number"
+          ? acc.metadata?.profileData?.followersCount
+          : null;
 
-    if (profileId) {
-      await db.insert(schema.zernioProfiles).values({
+      await db.insert(schema.zernioConnections).values({
         id: crypto.randomUUID(),
         zernioAccountId: accountId,
+        zernioProfileId: profileInternalId,
+        connectionId: connZernioId,
         platform,
-        profileId: String(profileId),
-        profileName,
-        profileAvatar,
+        username,
+        displayName,
+        profilePicture,
+        profileUrl,
+        isActive: acc.isActive !== false ? 1 : 0,
+        platformStatus:
+          acc.platformStatus || (acc.isActive !== false ? "active" : "inactive"),
+        followersCount,
       });
-      insertedCount++;
+      insertedConnectionsCount++;
     }
   }
 
-  return insertedCount;
+  // Handle any orphan accounts that weren't assigned to any profile
+  const unassignedAccounts = rawAccounts.filter(
+    (acc: any) =>
+      !assignedAccountIds.has(String(acc._id || acc.id || acc.accountId))
+  );
+
+  if (unassignedAccounts.length > 0) {
+    const fallbackProfileInternalId = crypto.randomUUID();
+    await db.insert(schema.zernioProfiles).values({
+      id: fallbackProfileInternalId,
+      zernioAccountId: accountId,
+      platform: "profile",
+      profileId: "unassigned-profile",
+      profileName: "Other Channels",
+      isDefault: 0,
+      color: null,
+    });
+    insertedProfilesCount++;
+
+    for (const acc of unassignedAccounts) {
+      const connZernioId = String(acc._id || acc.id || acc.accountId);
+      const platform = (acc.platform || "unknown").toLowerCase();
+      if (acc.isActive !== false) discoveredChannels.add(platform);
+
+      await db.insert(schema.zernioConnections).values({
+        id: crypto.randomUUID(),
+        zernioAccountId: accountId,
+        zernioProfileId: fallbackProfileInternalId,
+        connectionId: connZernioId,
+        platform,
+        username: acc.username || null,
+        displayName: acc.displayName || acc.username || `${platform} Channel`,
+        profilePicture: acc.profilePicture || null,
+        profileUrl: acc.profileUrl || null,
+        isActive: acc.isActive !== false ? 1 : 0,
+        platformStatus: acc.platformStatus || "active",
+        followersCount:
+          typeof acc.followersCount === "number" ? acc.followersCount : null,
+      });
+      insertedConnectionsCount++;
+    }
+  }
+
+  return {
+    profilesCount: insertedProfilesCount,
+    connectionsCount: insertedConnectionsCount,
+    availableChannels: Array.from(discoveredChannels),
+  };
 }
 
 /**
@@ -272,15 +532,23 @@ export async function uploadMediaToZernio(
   return { publicUrl, key };
 }
 
+export interface ZernioMediaItem {
+  type: "image" | "video" | "document";
+  url: string;
+  thumbnail?: string;
+}
+
 export interface ZernioPublishPayload {
   platform: "linkedin" | "youtube" | "instagram" | "facebook";
   accountId: string; // The social profile ID in Zernio
   content: string;
   title?: string | null;
+  mediaItems?: ZernioMediaItem[];
   mediaUrls?: string[];
   postType?: "reel" | "video" | "document" | "carousel" | "feed";
   publishNow?: boolean;
   scheduledFor?: string | null;
+  platformSpecificData?: Record<string, any>;
 }
 
 /**
@@ -292,13 +560,59 @@ export async function publishPostToZernio(
 ): Promise<{ id: string; status: string; rawResponse: any }> {
   const idempotencyKey = crypto.randomUUID();
 
+  // Normalize mediaItems array
+  let mediaItems: ZernioMediaItem[] = payload.mediaItems ? [...payload.mediaItems] : [];
+  if (mediaItems.length === 0 && payload.mediaUrls && payload.mediaUrls.length > 0) {
+    mediaItems = payload.mediaUrls.map((url) => {
+      let type: "image" | "video" | "document" = "image";
+      if (
+        payload.platform === "youtube" ||
+        payload.postType === "video" ||
+        payload.postType === "reel" ||
+        /\.mp4(\?.*)?$/i.test(url)
+      ) {
+        type = "video";
+      } else if (payload.postType === "document" || /\.pdf(\?.*)?$/i.test(url)) {
+        type = "document";
+      }
+      return { type, url };
+    });
+  }
+
+  const platformEntry: any = {
+    platform: payload.platform,
+    accountId: payload.accountId,
+  };
+
+  const specificData: Record<string, any> = { ...(payload.platformSpecificData || {}) };
+
+  if (payload.platform === "youtube") {
+    // YouTube requires video title in platformSpecificData (max 100 chars)
+    const rawTitle = payload.title || payload.content.split("\n")[0] || "Video";
+    const cleanTitle = rawTitle
+      .replace(/^(linkedin\s+(carousel\s+)?(caption|post):\s*)/i, "")
+      .trim();
+    specificData.title = cleanTitle.substring(0, 100);
+    if (specificData.visibility === undefined) {
+      specificData.visibility = "public";
+    }
+    if (specificData.madeForKids === undefined) {
+      specificData.madeForKids = false;
+    }
+    platformEntry.platformSpecificData = specificData;
+  } else if (payload.platform === "linkedin") {
+    if (payload.postType === "document" || mediaItems.some((m) => m.type === "document")) {
+      specificData.documentTitle = (payload.title || "Document").substring(0, 100);
+    }
+    if (Object.keys(specificData).length > 0) {
+      platformEntry.platformSpecificData = specificData;
+    }
+  } else if (Object.keys(specificData).length > 0) {
+    platformEntry.platformSpecificData = specificData;
+  }
+
   const body: any = {
-    platforms: [
-      {
-        platform: payload.platform,
-        accountId: payload.accountId,
-      },
-    ],
+    platforms: [platformEntry],
     content: payload.content,
     publishNow: payload.publishNow ?? true,
   };
@@ -307,11 +621,19 @@ export async function publishPostToZernio(
     body.title = payload.title;
   }
 
-  if (payload.mediaUrls && payload.mediaUrls.length > 0) {
-    body.mediaUrls = payload.mediaUrls;
+  if (mediaItems.length > 0) {
+    body.mediaItems = mediaItems;
   }
 
-  if (payload.postType) {
+  // Also include mediaUrls for backward compatibility
+  if (payload.mediaUrls && payload.mediaUrls.length > 0) {
+    body.mediaUrls = payload.mediaUrls;
+  } else if (mediaItems.length > 0) {
+    body.mediaUrls = mediaItems.map((m) => m.url);
+  }
+
+  // YouTube Shorts are automatically detected by video aspect ratio/duration, avoid postType flag for YouTube
+  if (payload.postType && payload.platform !== "youtube") {
     body.postType = payload.postType;
   }
 
