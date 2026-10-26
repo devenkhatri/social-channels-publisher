@@ -349,27 +349,29 @@ src/
 ### Phase 2: OneDrive Integration
 **Estimated effort: 2-3 days**
 
-- [ ] Register Azure AD application (App Registration)
+- [x] Register Azure AD application (App Registration) configuration support in UI & .env
   - Redirect URI: `http://localhost:3000/auth/microsoft/callback`
   - API Permissions: `Files.ReadWrite`, `Files.ReadWrite.All`, `User.Read` *(ReadWrite permission is required to rename folders to `-Done` upon publishing)*
-- [ ] Implement Microsoft OAuth 2.0 flow
+- [x] Implement Microsoft OAuth 2.0 flow
   - `GET /api/onedrive/auth` → redirect to Microsoft login
   - `GET /auth/microsoft/callback` → exchange code for tokens
-  - Store tokens in `oauth_tokens` table (encrypted)
+  - Store tokens in `oauth_tokens` table (AES-256-GCM encrypted)
   - Token refresh logic (auto-refresh on expiry)
-- [ ] Implement OneDrive folder browsing
+- [x] Implement OneDrive folder browsing
   - `GET /api/onedrive/folders` → list root-level folders
-  - `GET /api/onedrive/folders/[id]/children` → list subfolders
-  - Folder picker component (tree view with select)
-- [ ] Implement parent folder selection and persistence
-  - Save selected folder ID + path in `settings` table
-- [ ] Implement OneDrive folder rename service
+  - `GET /api/onedrive/folders?parentId={id}` → list subfolders
+  - Folder picker component (interactive drilldown with breadcrumbs and search)
+- [x] Implement parent folder selection and persistence
+  - Save selected folder ID + path in `settings` table (`POST /api/onedrive/select-folder`)
+- [x] Implement OneDrive folder rename service
   - Function: `renameFolder(driveItemId: string, newName: string)`
-  - Calls Graph API `PATCH /me/drive/items/{id}` with `{ "name": newName }`
-- [ ] Settings page UI for OneDrive connection
-  - Connection status indicator
+  - Calls Graph API `PATCH /me/drive/items/{id}` with `{ "name": newName }` (`POST /api/onedrive/rename`)
+- [x] Settings page UI for OneDrive connection
+  - Connection status indicator & user profile
   - Folder picker modal
   - Disconnect button
+  - Azure App Registration credentials manager
+  - Auto-rename to "-Done" lifecycle toggle
 
 **Microsoft Graph API endpoints used:**
 ```
