@@ -64,6 +64,22 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
 
     const { isDone, originalName } = parseFolderStatus(folder.name);
 
+    // Check if content item already exists by driveItemId (immutable)
+    const existing = await db
+      .select()
+      .from(schema.contentItems)
+      .where(eq(schema.contentItems.driveItemId, folder.id));
+
+    // If folder was already synced as -Done and folder name hasn't changed, skip heavy file inspection
+    if (
+      existing.length > 0 &&
+      existing[0].isDone === 1 &&
+      isDone &&
+      existing[0].folderName === folder.name
+    ) {
+      continue;
+    }
+
     // 3. List children inside this content folder
     let children: DriveChildItem[] = [];
     try {
@@ -72,6 +88,7 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
       console.error(`Failed to list children for folder ${folder.name}:`, err);
       continue;
     }
+
 
     // Categorize files
     const captionFile = children.find((c) => !c.isFolder && /^caption\.md$/i.test(c.name));
@@ -142,12 +159,7 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
     // Cover image URL or Item ID
     const coverImage = coverFile?.downloadUrl || coverFile?.id || sortedSlides[0]?.downloadUrl || null;
 
-    // Check if content item already exists by driveItemId (immutable)
-    const existing = await db
-      .select()
-      .from(schema.contentItems)
-      .where(eq(schema.contentItems.driveItemId, folder.id));
-
+    // Reuse existing query result
     let contentItemId: string;
     const nowIso = new Date().toISOString();
 

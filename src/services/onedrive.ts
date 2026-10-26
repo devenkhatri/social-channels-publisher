@@ -232,28 +232,38 @@ export interface OneDriveFolderItem {
 }
 
 /**
- * Lists subfolders under root or a specific folder ID
+ * Lists all subfolders under root or a specific folder ID, following pagination
  */
 export async function listFolders(parentId?: string): Promise<OneDriveFolderItem[]> {
   const client = await getGraphClient();
-  const endpoint = !parentId || parentId === "root"
+  let nextUrl: string | undefined = !parentId || parentId === "root"
     ? "/me/drive/root/children"
     : `/me/drive/items/${parentId}/children`;
 
-  const res = await client
-    .api(endpoint)
-    .filter("folder ne null")
-    .select("id,name,webUrl,folder,parentReference")
-    .top(100)
-    .get();
+  const allItems: any[] = [];
+  let isFirst = true;
 
-  return (res.value || []).map((item: any) => ({
-    id: item.id,
-    name: item.name,
-    webUrl: item.webUrl,
-    childCount: item.folder?.childCount,
-    parentReference: item.parentReference,
-  }));
+  while (nextUrl) {
+    let req = client.api(nextUrl);
+    if (isFirst) {
+      req = req.select("id,name,webUrl,folder,parentReference").top(200);
+      isFirst = false;
+    }
+    const res = await req.get();
+    const items = res.value || [];
+    allItems.push(...items);
+    nextUrl = res["@odata.nextLink"];
+  }
+
+  return allItems
+    .filter((item: any) => Boolean(item.folder))
+    .map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      webUrl: item.webUrl,
+      childCount: item.folder?.childCount,
+      parentReference: item.parentReference,
+    }));
 }
 
 /**
@@ -291,21 +301,30 @@ export interface DriveChildItem {
 }
 
 /**
- * Lists all children (files and subfolders) inside a given folder ID
+ * Lists all children (files and subfolders) inside a given folder ID, following pagination
  */
 export async function listFolderChildren(folderId: string): Promise<DriveChildItem[]> {
   const client = await getGraphClient();
-  const endpoint = !folderId || folderId === "root"
+  let nextUrl: string | undefined = !folderId || folderId === "root"
     ? "/me/drive/root/children"
     : `/me/drive/items/${folderId}/children`;
 
-  const res = await client
-    .api(endpoint)
-    .select("id,name,file,folder,size,webUrl,@microsoft.graph.downloadUrl")
-    .top(200)
-    .get();
+  const allItems: any[] = [];
+  let isFirst = true;
 
-  return (res.value || []).map((item: any) => ({
+  while (nextUrl) {
+    let req = client.api(nextUrl);
+    if (isFirst) {
+      req = req.select("id,name,file,folder,size,webUrl,@microsoft.graph.downloadUrl").top(200);
+      isFirst = false;
+    }
+    const res = await req.get();
+    const items = res.value || [];
+    allItems.push(...items);
+    nextUrl = res["@odata.nextLink"];
+  }
+
+  return allItems.map((item: any) => ({
     id: item.id,
     name: item.name,
     isFolder: Boolean(item.folder),
@@ -316,6 +335,7 @@ export async function listFolderChildren(folderId: string): Promise<DriveChildIt
     childCount: item.folder?.childCount,
   }));
 }
+
 
 /**
  * Fetches the text content of a file in OneDrive (e.g. .md, .txt)
