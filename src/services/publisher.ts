@@ -82,6 +82,7 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
   let zernioConnectionId = post.zernioConnectionId;
 
   const allConnections = await db.select().from(schema.zernioConnections);
+  const allProfiles = await db.select().from(schema.zernioProfiles);
   const matchingConnections = allConnections.filter(
     (c) => c.platform.toLowerCase() === post.channel.toLowerCase() && c.isActive === 1
   );
@@ -114,15 +115,18 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
   }
 
   let targetAccountId: string;
+  let zernioApiProfileId: string | undefined;
 
   if (targetConnection) {
     targetAccountId = targetConnection.connectionId;
     zernioAccountId = targetConnection.zernioAccountId;
     zernioProfileId = targetConnection.zernioProfileId;
     zernioConnectionId = targetConnection.id;
+
+    const matchingProfile = allProfiles.find((p) => p.id === targetConnection!.zernioProfileId);
+    zernioApiProfileId = matchingProfile?.profileId;
   } else {
     // Fallback to legacy zernioProfiles if any
-    const allProfiles = await db.select().from(schema.zernioProfiles);
     const legacyProfile = allProfiles.find(
       (p) => p.id === zernioProfileId || p.platform.toLowerCase() === post.channel.toLowerCase()
     );
@@ -134,6 +138,17 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
     targetAccountId = legacyProfile.profileId;
     zernioAccountId = legacyProfile.zernioAccountId;
     zernioProfileId = legacyProfile.id;
+    zernioApiProfileId = legacyProfile.profileId;
+  }
+
+  // Ensure zernioApiProfileId is resolved from profiles for queue assignment
+  if (!zernioApiProfileId && zernioProfileId) {
+    const prof = allProfiles.find((p) => p.id === zernioProfileId || p.profileId === zernioProfileId);
+    zernioApiProfileId = prof?.profileId;
+  }
+  if (!zernioApiProfileId && allProfiles.length > 0) {
+    const defProf = allProfiles.find((p) => p.isDefault === 1) || allProfiles[0];
+    zernioApiProfileId = defProf.profileId;
   }
 
   if (!zernioAccountId) {
@@ -278,7 +293,7 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
       }
     }
 
-    // 4. Construct payload and send to Zernio
+    // 4. Construct payload and queue to Zernio
     const payload: ZernioPublishPayload = {
       platform: post.channel as any,
       accountId: targetAccountId,
@@ -287,25 +302,28 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
       mediaItems: mediaItems.length > 0 ? mediaItems : undefined,
       mediaUrls: uploadedMediaUrls.length > 0 ? uploadedMediaUrls : undefined,
       postType: post.postType as any,
-      publishNow: !post.scheduledFor,
-      scheduledFor: post.scheduledFor || undefined,
+      queuedFromProfile: zernioApiProfileId,
     };
 
-    console.log("[Publisher] Sending payload to Zernio:", JSON.stringify(payload, null, 2));
+    console.log("[Publisher] Sending payload to Zernio (queuing):", JSON.stringify(payload, null, 2));
     const zernioRes = await publishPostToZernio(apiKey, payload);
-    console.log("[Publisher] Zernio publish result:", JSON.stringify(zernioRes, null, 2));
+    console.log("[Publisher] Zernio queue result:", JSON.stringify(zernioRes, null, 2));
 
     // 5. Update post in DB
     const nowIso = new Date().toISOString();
+    const isScheduled = zernioRes.status === "scheduled" || Boolean(payload.queuedFromProfile);
+    const assignedSlot = zernioRes.scheduledFor || post.scheduledFor || null;
+
     await db
       .update(schema.channelPosts)
       .set({
-        status: post.scheduledFor ? "scheduled" : "published",
+        status: isScheduled ? "scheduled" : "published",
         zernioPostId: zernioRes.id,
         zernioAccountId,
         zernioProfileId,
         zernioConnectionId,
-        publishedAt: post.scheduledFor ? null : nowIso,
+        scheduledFor: assignedSlot,
+        publishedAt: isScheduled ? null : nowIso,
         errorMessage: null,
         updatedAt: nowIso,
       })
@@ -314,10 +332,14 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
     // 6. Check if all posts are completed and rename folder to "-Done"
     const folderRenamed = await checkAndRenameFolderIfDone(contentItem.id);
 
+    const formattedSlot = assignedSlot ? new Date(assignedSlot).toLocaleString() : null;
+
     await logActivity({
       type: "publish",
-      title: `Published to ${post.channel}`,
-      description: `Post ID: ${zernioRes.id}`,
+      title: isScheduled ? `Queued for ${post.channel}` : `Published to ${post.channel}`,
+      description: isScheduled && formattedSlot
+        ? `Added to default queue. Next slot: ${formattedSlot} (Post ID: ${zernioRes.id})`
+        : `Post ID: ${zernioRes.id}`,
       contentItemId: contentItem.id,
       channel: post.channel,
       status: "success",
@@ -329,7 +351,9 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
       zernioPostId: zernioRes.id,
       channel: post.channel,
       folderRenamed,
-      message: `Successfully published to ${post.channel}!`,
+      message: isScheduled && formattedSlot
+        ? `Successfully added to ${post.channel} queue (scheduled for ${formattedSlot})!`
+        : `Successfully added to ${post.channel} queue!`,
     };
   } catch (publishErr: any) {
     const errorMsg = publishErr?.message || "Publishing failed";

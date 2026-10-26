@@ -548,16 +548,18 @@ export interface ZernioPublishPayload {
   postType?: "reel" | "video" | "document" | "carousel" | "feed";
   publishNow?: boolean;
   scheduledFor?: string | null;
+  queuedFromProfile?: string | null;
+  queueId?: string | null;
   platformSpecificData?: Record<string, any>;
 }
 
 /**
- * Publishes a post to Zernio
+ * Publishes or queues a post to Zernio
  */
 export async function publishPostToZernio(
   apiKey: string,
   payload: ZernioPublishPayload
-): Promise<{ id: string; status: string; rawResponse: any }> {
+): Promise<{ id: string; status: string; scheduledFor?: string | null; rawResponse: any }> {
   const idempotencyKey = crypto.randomUUID();
 
   // Normalize mediaItems array
@@ -614,8 +616,20 @@ export async function publishPostToZernio(
   const body: any = {
     platforms: [platformEntry],
     content: payload.content,
-    publishNow: payload.publishNow ?? true,
   };
+
+  if (payload.queuedFromProfile) {
+    body.queuedFromProfile = payload.queuedFromProfile;
+    if (payload.queueId) {
+      body.queueId = payload.queueId;
+    }
+    // Omit publishNow and scheduledFor to let Zernio assign the profile's next queue slot
+  } else if (payload.scheduledFor) {
+    body.scheduledFor = payload.scheduledFor;
+    body.publishNow = false;
+  } else {
+    body.publishNow = payload.publishNow ?? true;
+  }
 
   if (payload.title) {
     body.title = payload.title;
@@ -637,11 +651,6 @@ export async function publishPostToZernio(
     body.postType = payload.postType;
   }
 
-  if (payload.scheduledFor) {
-    body.scheduledFor = payload.scheduledFor;
-    body.publishNow = false;
-  }
-
   const res = await fetch(`${ZERNIO_BASE_URL}/posts`, {
     method: "POST",
     headers: {
@@ -659,12 +668,15 @@ export async function publishPostToZernio(
     throw new Error(`Zernio publishing error: ${errorMsg}`);
   }
 
-  const postId = responseJson.id || responseJson.postId || responseJson.data?.id || idempotencyKey;
-  const status = responseJson.status || "published";
+  const postObj = responseJson.post || responseJson.data || responseJson;
+  const postId = postObj._id || postObj.id || responseJson.id || responseJson.postId || idempotencyKey;
+  const status = postObj.status || responseJson.status || (payload.queuedFromProfile ? "scheduled" : "published");
+  const scheduledFor = postObj.scheduledFor || responseJson.scheduledFor || null;
 
   return {
     id: String(postId),
     status,
+    scheduledFor,
     rawResponse: responseJson,
   };
 }

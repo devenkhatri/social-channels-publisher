@@ -17,6 +17,7 @@ import {
   Copy,
   Check,
   Send,
+  Clock,
   Save,
   RefreshCw,
   Sparkles,
@@ -608,6 +609,8 @@ export default function ContentDetailPage({
               <span>{tab.name}</span>
               {isPublished ? (
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              ) : post?.status === "scheduled" ? (
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400" title="Queued in Zernio" />
               ) : isFailed ? (
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
               ) : null}
@@ -1018,6 +1021,8 @@ export default function ContentDetailPage({
                   className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
                     currentPost?.status === "published"
                       ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                      : currentPost?.status === "scheduled"
+                      ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
                       : currentPost?.status === "failed"
                       ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
                       : currentPost?.status === "publishing"
@@ -1025,7 +1030,11 @@ export default function ContentDetailPage({
                       : "bg-slate-800 text-slate-400 border-slate-700"
                   }`}
                 >
-                  {currentPost?.status || "draft"}
+                  {currentPost?.status === "scheduled"
+                    ? currentPost.scheduledFor
+                      ? `Queued (${new Date(currentPost.scheduledFor).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })})`
+                      : "Queued"
+                    : currentPost?.status || "draft"}
                 </span>
               </div>
 
@@ -1284,9 +1293,12 @@ export default function ContentDetailPage({
                   {publishMutation.isPending ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                   ) : (
-                    <Send className="w-3.5 h-3.5" />
+                    <Clock className="w-3.5 h-3.5" />
                   )}
-                  <span>Publish to {activeChannel}</span>
+                  <span>
+                    {currentPost?.status === "scheduled" ? "Re-queue to" : "Queue to"}{" "}
+                    {activeChannel}
+                  </span>
                 </button>
               ) : (
                 <div className="flex items-center gap-2">

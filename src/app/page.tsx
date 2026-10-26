@@ -245,6 +245,7 @@ export default function DashboardPage() {
       >
         <span>{label}</span>
         {isPub && <span className="w-1 h-1 rounded-full bg-emerald-400" />}
+        {isSched && <span className="w-1 h-1 rounded-full bg-blue-400" />}
         {isFail && <span className="w-1 h-1 rounded-full bg-rose-400" />}
         {isPublishing && <RefreshCw className="w-2.5 h-2.5 animate-spin text-indigo-400" />}
       </span>
