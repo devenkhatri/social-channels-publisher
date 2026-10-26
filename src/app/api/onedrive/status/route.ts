@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, connection } from "next/server";
 import { db, schema } from "@/db";
 import { eq } from "drizzle-orm";
 import { getUserProfile, getAzureCredentials } from "@/services/onedrive";
 
 export async function GET(request: NextRequest) {
+  await connection();
   try {
     const creds = await getAzureCredentials();
     const hasAzureCreds = Boolean(creds.clientId && creds.clientSecret);
