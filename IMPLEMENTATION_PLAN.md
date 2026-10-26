@@ -650,7 +650,6 @@ GET /v1/profiles → list all connected social profiles for an API key
 - [x] Activity log (record all publish, sync, rename, and error attempts with timestamps at `/activity`)
 - [x] Bulk publish & batch mark done (select multiple content items → floating dock with batch actions)
 - [x] Environment variable documentation
-- [x] Docker support for self-hosting (Dockerfile and docker-compose.yml)
 - [x] README with setup instructions and architecture diagram
 
 ---

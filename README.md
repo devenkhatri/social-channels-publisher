@@ -128,7 +128,7 @@ Each subfolder inside your OneDrive parent folder represents a complete social m
 
 ### Prerequisites
 
-- **Node.js**: `v20.x` or `v22.x` (or Docker)
+- **Node.js**: `v20.x` or `v22.x`
 - **Microsoft Azure Account**: For OneDrive OAuth 2.0 delegated access
 - **Zernio API Account**: For multi-platform publishing
 
@@ -204,18 +204,6 @@ Open [http://localhost:3000](http://localhost:3000) in your browser:
 4. Navigate to **Zernio Accounts** (`/settings/zernio`) and add your Zernio API key.
 5. Click **Sync from OneDrive** on the dashboard to pull all pending content packages!
 
----
-
-### Step 4: Docker Deployment (Self-Hosting)
-
-A production-ready `Dockerfile` and `docker-compose.yml` are included.
-
-1. Ensure your `.env` or environment variables are configured.
-2. Launch the container:
-   ```bash
-   docker compose up -d
-   ```
-3. Your database and state will be persisted in `./data/social-publisher.db`.
 
 ---
 
