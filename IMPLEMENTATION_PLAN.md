@@ -315,13 +315,13 @@ CREATE TABLE oauth_tokens (
 ### Phase 1: Project Scaffolding & Core Setup
 **Estimated effort: 1-2 days**
 
-- [ ] Initialize Next.js 14+ project with TypeScript, App Router
-- [ ] Configure Tailwind CSS + shadcn/ui components
-- [ ] Set up Drizzle ORM + SQLite database
-- [ ] Create database schema and migrations
-- [ ] Implement simple password authentication (middleware + session cookie)
-- [ ] Create base layout (sidebar navigation, header, main content area)
-- [ ] Set up environment variables structure
+- [x] Initialize Next.js 14+ (Next.js 16) project with TypeScript, App Router & Turbopack
+- [x] Configure Tailwind CSS v4 styling & layout primitives
+- [x] Set up Drizzle ORM + SQLite database with WAL pragma
+- [x] Create database schema (settings, accounts, profiles, content_items, channel_posts, tokens)
+- [x] Implement simple password authentication (Next.js 16 proxy + HTTP-only session cookie)
+- [x] Create base layout (sidebar navigation, mobile bottom nav, header, main content area)
+- [x] Set up environment variables structure (.env.example, .env.local)
 
 **Key files:**
 ```
