@@ -218,6 +218,7 @@ export default function DashboardPage() {
     const isPub = post?.status === "published";
     const isFail = post?.status === "failed";
     const isSched = post?.status === "scheduled";
+    const isPublishing = post?.status === "publishing";
 
     let label = channel.toUpperCase().slice(0, 2);
     if (channel === "linkedin") label = "LI";
@@ -235,6 +236,8 @@ export default function DashboardPage() {
             ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
             : isFail
             ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+            : isPublishing
+            ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 animate-pulse"
             : isSched
             ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
             : "bg-slate-800 text-slate-400 border border-slate-700/60"
@@ -243,6 +246,7 @@ export default function DashboardPage() {
         <span>{label}</span>
         {isPub && <span className="w-1 h-1 rounded-full bg-emerald-400" />}
         {isFail && <span className="w-1 h-1 rounded-full bg-rose-400" />}
+        {isPublishing && <RefreshCw className="w-2.5 h-2.5 animate-spin text-indigo-400" />}
       </span>
     );
   };

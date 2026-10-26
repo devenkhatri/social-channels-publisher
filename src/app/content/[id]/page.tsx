@@ -111,6 +111,11 @@ export default function ContentDetailPage({
       if (!res.ok) throw new Error("Failed to load content details");
       return res.json();
     },
+    refetchInterval: (query) => {
+      const posts = query.state.data?.posts;
+      const isPublishing = posts?.some((p) => p.status === "publishing");
+      return isPublishing ? 2000 : false;
+    },
   });
 
   const { data: accountsData } = useQuery({

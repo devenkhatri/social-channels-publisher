@@ -624,7 +624,7 @@ GET /v1/profiles → list all connected social profiles for an API key
   - Generate `Idempotency-Key` (UUID) per publish attempt to avoid duplicate posts
 
 
-- [ ] Publish status tracking
+- [x] Publish status tracking
   - Real-time status updates via polling or SSE
   - Status flow: `draft` → `publishing` → `published` | `failed`
 

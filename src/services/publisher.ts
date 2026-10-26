@@ -106,6 +106,15 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
 
   const apiKey = await getDecryptedApiKey(zernioAccountId);
 
+  // Mark post status as 'publishing' in DB
+  await db
+    .update(schema.channelPosts)
+    .set({
+      status: "publishing",
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(schema.channelPosts.id, post.id));
+
   // 2. Discover children inside the OneDrive folder
   const children = await listFolderChildren(contentItem.driveItemId);
   const hyperframesVideo = children.find(
