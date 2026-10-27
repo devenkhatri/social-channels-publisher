@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, schema } from "@/db";
 import { eq } from "drizzle-orm";
 import { stripMarkdown } from "@/services/extractor";
+import { checkAndRenameFolderIfDone } from "@/services/publisher";
 
 export async function PATCH(
   request: NextRequest,
@@ -27,9 +28,20 @@ export async function PATCH(
     if (body.title !== undefined) updateData.title = body.title ? stripMarkdown(body.title) : null;
     if (body.body !== undefined) updateData.body = body.body ? stripMarkdown(body.body) : "";
     if (body.postType !== undefined) updateData.postType = body.postType;
-    if (body.mediaType !== undefined) updateData.mediaType = body.mediaType;
-    if (body.status !== undefined) updateData.status = body.status;
+    if (body.status !== undefined) {
+      updateData.status = body.status;
+      if (body.status === "published") {
+        updateData.publishedAt = body.publishedAt || new Date().toISOString();
+        updateData.errorMessage = null;
+      } else if (body.status === "draft") {
+        updateData.publishedAt = null;
+        updateData.scheduledFor = null;
+        updateData.errorMessage = null;
+      }
+    }
     if (body.scheduledFor !== undefined) updateData.scheduledFor = body.scheduledFor;
+    if (body.publishedAt !== undefined) updateData.publishedAt = body.publishedAt;
+    if (body.errorMessage !== undefined) updateData.errorMessage = body.errorMessage;
 
     // Handle account, profile, and connection gracefully to avoid FK constraints
     if (body.zernioConnectionId !== undefined) {
@@ -76,6 +88,14 @@ export async function PATCH(
       .update(schema.channelPosts)
       .set(updateData)
       .where(eq(schema.channelPosts.id, id));
+
+    if (body.status === "published") {
+      try {
+        await checkAndRenameFolderIfDone(existing[0].contentItemId);
+      } catch (err) {
+        console.warn("Folder check/rename error:", err);
+      }
+    }
 
     const updated = await db
       .select()

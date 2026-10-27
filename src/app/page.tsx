@@ -230,27 +230,38 @@ export default function DashboardPage() {
     if (channel === "facebook") label = "FB";
     if (channel === "skool") label = "SK";
 
+    const statusTitle = isPub
+      ? `${channel}: Published`
+      : isSched
+      ? `${channel}: Queued`
+      : isFail
+      ? `${channel}: Failed (${post?.errorMessage || "error"})`
+      : `${channel}: Pending`;
+
     return (
       <span
         key={channel}
-        title={`${channel}: ${post?.status || "draft"}`}
-        className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold flex items-center gap-1 ${
+        title={statusTitle}
+        className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold flex items-center gap-1 transition-all ${
           isPub
-            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+            ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
             : isFail
-            ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+            ? "bg-rose-500/15 text-rose-300 border border-rose-500/30"
             : isPublishing
-            ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 animate-pulse"
+            ? "bg-indigo-500/15 text-indigo-300 border border-indigo-500/40 animate-pulse"
             : isSched
-            ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-            : "bg-slate-800 text-slate-400 border border-slate-700/60"
+            ? "bg-blue-500/15 text-blue-300 border border-blue-500/30"
+            : "bg-slate-950/80 text-slate-400 border border-slate-800"
         }`}
       >
         <span>{label}</span>
-        {isPub && <span className="w-1 h-1 rounded-full bg-emerald-400" />}
-        {isSched && <span className="w-1 h-1 rounded-full bg-blue-400" />}
-        {isFail && <span className="w-1 h-1 rounded-full bg-rose-400" />}
+        {isPub && <Check className="w-2.5 h-2.5 text-emerald-400" />}
+        {isSched && <Clock className="w-2.5 h-2.5 text-blue-400" />}
+        {isFail && <AlertCircle className="w-2.5 h-2.5 text-rose-400" />}
         {isPublishing && <RefreshCw className="w-2.5 h-2.5 animate-spin text-indigo-400" />}
+        {!isPub && !isSched && !isFail && !isPublishing && (
+          <span className="w-1 h-1 rounded-full bg-slate-600" />
+        )}
       </span>
     );
   };
@@ -620,20 +631,63 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Channels Status Strip & Action */}
-                <div className="mt-5 pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {["linkedin", "linkedin_page", "threads", "youtube", "instagram", "facebook", "skool"].map(
-                      (ch) => getChannelPill(ch, item.posts)
-                    )}
+                <div className="mt-5 pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-1.5 min-w-0">
+                    <div className="flex items-center gap-2 text-[11px]">
+                      {(() => {
+                        const pubCount = (item.posts || []).filter((p: any) => p.status === "published").length;
+                        const schedCount = (item.posts || []).filter((p: any) => p.status === "scheduled").length;
+
+                        if (pubCount === 7) {
+                          return (
+                            <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>All 7 channels published</span>
+                            </span>
+                          );
+                        }
+                        if (pubCount > 0) {
+                          return (
+                            <span className="text-amber-300 font-medium flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                              <span>
+                                {pubCount} of 7 published ({7 - pubCount} pending
+                                {schedCount > 0 ? `, ${schedCount} queued` : ""})
+                              </span>
+                            </span>
+                          );
+                        }
+                        if (schedCount > 0) {
+                          return (
+                            <span className="text-blue-400 font-medium flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                              <span>{schedCount} queued • {7 - schedCount} pending</span>
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="text-slate-400 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
+                            <span>7 channels pending</span>
+                          </span>
+                        );
+                      })()}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {["linkedin", "linkedin_page", "threads", "youtube", "instagram", "facebook", "skool"].map(
+                        (ch) => getChannelPill(ch, item.posts || [])
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                     {item.isDone === 0 && (
                       <button
                         onClick={() => markDoneMutation.mutate(item.id)}
                         disabled={markDoneMutation.isPending}
                         title="Mark as published & rename folder on OneDrive"
-                        className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-emerald-600/20 text-slate-300 hover:text-emerald-400 text-[11px] font-medium border border-slate-700 hover:border-emerald-500/30 transition-all"
+                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-emerald-600/20 text-slate-300 hover:text-emerald-400 text-[11px] font-medium border border-slate-700 hover:border-emerald-500/30 transition-all"
                       >
                         <span>-Done</span>
                       </button>
@@ -641,7 +695,7 @@ export default function DashboardPage() {
 
                     <Link
                       href={`/content/${item.id}`}
-                      className="flex items-center gap-1 text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+                      className="flex items-center gap-1 text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors px-2.5 py-1 rounded-lg hover:bg-indigo-500/10"
                     >
                       <span>Editor</span>
                       <ArrowUpRight className="w-3.5 h-3.5" />

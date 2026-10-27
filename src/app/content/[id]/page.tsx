@@ -473,6 +473,36 @@ export default function ContentDetailPage({
     },
   });
 
+  // Single channel status manual toggle mutation (e.g. Mark as Done / Undo)
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ postId, status }: { postId: string; status: "draft" | "published" }) => {
+      const res = await fetch(`/api/posts/${postId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to update channel status");
+      return json;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["content-detail", id] });
+      queryClient.invalidateQueries({ queryKey: ["content-items"] });
+      setToastMessage({
+        text: variables.status === "published" ? "Channel marked as Published!" : "Channel reset to Pending.",
+        type: "success",
+      });
+      setTimeout(() => setToastMessage(null), 3500);
+    },
+    onError: (err: any) => {
+      setToastMessage({
+        text: err.message || "Failed to update channel status",
+        type: "error",
+      });
+      setTimeout(() => setToastMessage(null), 4000);
+    },
+  });
+
   const copyToClipboard = (text: string, fieldName: string) => {
     navigator.clipboard.writeText(text);
     setCopiedField(fieldName);
@@ -507,6 +537,34 @@ export default function ContentDetailPage({
   const activeVideo = allVideos.find((v) => v.id === selectedVideoId) || allVideos[0];
   const pdfFile = assets.pdfs?.[0] || null;
   const coverFile = assets.coverFile || null;
+
+  interface ChannelListItem {
+    id: ChannelType;
+    name: string;
+    shortName: string;
+    badge: string;
+    shortLabel: string;
+  }
+
+  const channelList: ChannelListItem[] = [
+    { id: "linkedin", name: "LinkedIn", shortName: "LinkedIn", badge: "Personal", shortLabel: "LI" },
+    { id: "linkedin_page", name: "LinkedIn Page", shortName: "LI Page", badge: "Business", shortLabel: "LP" },
+    { id: "threads", name: "Threads", shortName: "Threads", badge: "Post", shortLabel: "TH" },
+    { id: "youtube", name: "YouTube", shortName: "YouTube", badge: "Shorts / Video", shortLabel: "YT" },
+    { id: "instagram", name: "Instagram", shortName: "Instagram", badge: "Reel / Carousel", shortLabel: "IG" },
+    { id: "facebook", name: "Facebook", shortName: "Facebook", badge: "Reel / Feed", shortLabel: "FB" },
+    { id: "skool", name: "Skool", shortName: "Skool", badge: "Manual Copy", shortLabel: "SK" },
+  ];
+
+  const publishedPosts = posts.filter((p) => p.status === "published");
+  const scheduledPosts = posts.filter((p) => p.status === "scheduled");
+  const failedPosts = posts.filter((p) => p.status === "failed");
+  const pendingPosts = posts.filter((p) => p.status !== "published" && p.status !== "scheduled");
+  const publishedCount = publishedPosts.length;
+  const scheduledCount = scheduledPosts.length;
+  const failedCount = failedPosts.length;
+  const pendingCount = pendingPosts.length;
+  const totalChannels = channelList.length;
 
   const sourceFileBadge = (() => {
     if (activeChannel === "facebook") {
@@ -704,23 +762,35 @@ export default function ContentDetailPage({
               <>
                 <button
                   onClick={() => {
-                    if (
-                      confirm(
-                        `Publish this content across all configured social channels (YouTube, LinkedIn, LinkedIn Page, X, Instagram, Facebook)?`
-                      )
-                    ) {
+                    const confirmMsg =
+                      pendingCount < totalChannels && pendingCount > 0
+                        ? `Publish the remaining ${pendingCount} pending channel${pendingCount > 1 ? "s" : ""} (${posts.filter(p => p.status !== "published").map(p => p.channel).join(", ")})?`
+                        : `Publish this content across all configured social channels?`;
+                    if (confirm(confirmMsg)) {
                       publishAllMutation.mutate();
                     }
                   }}
-                  disabled={publishAllMutation.isPending}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/25 transition-all disabled:opacity-50"
+                  disabled={publishAllMutation.isPending || pendingCount === 0}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold shadow-md transition-all disabled:opacity-50 ${
+                    pendingCount === 0
+                      ? "bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 cursor-default"
+                      : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/25"
+                  }`}
                 >
                   {publishAllMutation.isPending ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : pendingCount === 0 ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                   ) : (
                     <Send className="w-3.5 h-3.5" />
                   )}
-                  <span>Publish All Channels</span>
+                  <span>
+                    {pendingCount === 0
+                      ? "All Channels Published"
+                      : pendingCount < totalChannels
+                      ? `Publish Pending Channels (${pendingCount})`
+                      : "Publish All Channels"}
+                  </span>
                 </button>
 
                 <button
@@ -772,41 +842,179 @@ export default function ContentDetailPage({
         </div>
       </div>
 
+      {/* Channel Publishing Status Tracker & Checklist Bar */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg shadow-black/20 space-y-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Publish Status
+              </span>
+              <span
+                className={`text-xs font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 ${
+                  publishedCount === totalChannels
+                    ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                    : publishedCount > 0
+                    ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                    : "bg-slate-800 text-slate-400 border-slate-700"
+                }`}
+              >
+                {publishedCount === totalChannels ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>All Channels Done (7/7)</span>
+                  </>
+                ) : (
+                  <span>{publishedCount} of {totalChannels} Published</span>
+                )}
+              </span>
+            </div>
+            {scheduledCount > 0 && (
+              <span className="text-[11px] font-medium text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full">
+                {scheduledCount} Queued
+              </span>
+            )}
+            {failedCount > 0 && (
+              <span className="text-[11px] font-medium text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-full">
+                {failedCount} Failed
+              </span>
+            )}
+          </div>
+
+          <div className="text-xs text-slate-400">
+            {pendingCount > 0 ? (
+              <span>
+                <strong className="text-amber-300 font-semibold">{pendingCount}</strong> channel{pendingCount > 1 ? "s" : ""} pending publish
+              </span>
+            ) : (
+              <span className="text-emerald-400 font-medium flex items-center gap-1">
+                <Check className="w-3.5 h-3.5" /> All channels completed
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Visual Progress Bar */}
+        <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800/80">
+          <div
+            className={`h-full transition-all duration-500 ${
+              publishedCount === totalChannels
+                ? "bg-emerald-500"
+                : publishedCount > 0
+                ? "bg-gradient-to-r from-indigo-500 to-emerald-400"
+                : "bg-slate-800"
+            }`}
+            style={{ width: `${Math.round((publishedCount / totalChannels) * 100)}%` }}
+          />
+        </div>
+
+        {/* Quick Channel Checklist (Clickable chips to jump directly to channel) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-1">
+          {channelList.map((ch) => {
+            const post = posts.find((p) => p.channel === ch.id);
+            const isPub = post?.status === "published";
+            const isSched = post?.status === "scheduled";
+            const isFail = post?.status === "failed";
+            const isActive = activeChannel === ch.id;
+
+            return (
+              <button
+                key={ch.id}
+                type="button"
+                onClick={() => setActiveChannel(ch.id)}
+                className={`p-2 rounded-xl text-left border transition-all flex flex-col justify-between ${
+                  isActive
+                    ? "bg-indigo-950/40 border-indigo-500 ring-1 ring-indigo-500/30"
+                    : isPub
+                    ? "bg-slate-950/60 border-emerald-500/30 hover:border-emerald-500/50"
+                    : isFail
+                    ? "bg-rose-950/20 border-rose-500/30 hover:border-rose-500/50"
+                    : isSched
+                    ? "bg-blue-950/20 border-blue-500/30 hover:border-blue-500/50"
+                    : "bg-slate-950/40 border-slate-800/80 hover:border-slate-700"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-1 mb-1">
+                  <span className="text-[11px] font-semibold text-slate-200 truncate">
+                    {ch.shortName}
+                  </span>
+                  {isPub ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  ) : isSched ? (
+                    <Clock className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                  ) : isFail ? (
+                    <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                  ) : (
+                    <span className="w-2.5 h-2.5 rounded-full border border-slate-600 bg-slate-800 shrink-0" />
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between text-[10px]">
+                  <span
+                    className={`font-semibold ${
+                      isPub
+                        ? "text-emerald-400"
+                        : isSched
+                        ? "text-blue-400"
+                        : isFail
+                        ? "text-rose-400"
+                        : "text-slate-400"
+                    }`}
+                  >
+                    {isPub ? "Done" : isSched ? "Queued" : isFail ? "Failed" : "Pending"}
+                  </span>
+                  <span className="text-slate-400 font-mono text-[9px]">{ch.shortLabel}</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Channel Switcher Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-800/80 scrollbar-none">
-        {(
-          [
-            { id: "linkedin", name: "LinkedIn", badge: "Personal" },
-            { id: "linkedin_page", name: "LinkedIn Page", badge: "Business" },
-            { id: "threads", name: "Threads", badge: "Post" },
-            { id: "youtube", name: "YouTube", badge: "Shorts / Video" },
-            { id: "instagram", name: "Instagram", badge: "Reel / Carousel" },
-            { id: "facebook", name: "Facebook", badge: "Reel / Feed" },
-            { id: "skool", name: "Skool", badge: "Manual Copy" },
-          ] as const
-        ).map((tab) => {
+        {channelList.map((tab) => {
           const post = posts.find((p) => p.channel === tab.id);
           const isPublished = post?.status === "published";
+          const isScheduled = post?.status === "scheduled";
           const isFailed = post?.status === "failed";
 
           return (
             <button
               key={tab.id}
               onClick={() => setActiveChannel(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all border ${
+              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all border ${
                 activeChannel === tab.id
                   ? "bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-600/25"
+                  : isPublished
+                  ? "bg-slate-900/90 text-slate-300 border-emerald-500/30 hover:border-emerald-500/50"
                   : "bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700"
               }`}
             >
               <span>{tab.name}</span>
+
+              {/* Status pill badge on tab */}
               {isPublished ? (
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              ) : post?.status === "scheduled" ? (
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400" title="Queued in Zernio" />
+                <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold">
+                  <Check className="w-2.5 h-2.5" />
+                  <span>Done</span>
+                </span>
+              ) : isScheduled ? (
+                <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-semibold">
+                  <Clock className="w-2.5 h-2.5" />
+                  <span>Queued</span>
+                </span>
               ) : isFailed ? (
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
-              ) : null}
+                <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-semibold">
+                  <AlertCircle className="w-2.5 h-2.5" />
+                  <span>Failed</span>
+                </span>
+              ) : (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 font-medium">
+                  Pending
+                </span>
+              )}
+
               <span
                 className={`text-[10px] px-1.5 py-0.5 rounded ${
                   activeChannel === tab.id
@@ -1251,6 +1459,124 @@ export default function ContentDetailPage({
                 </a>
               )}
             </div>
+
+            {/* Prominent Channel Status & Action Banner */}
+            {currentPost?.status === "published" ? (
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-xs shadow-sm">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-emerald-300 flex items-center gap-2">
+                      <span>
+                        Published to{" "}
+                        {activeChannel === "linkedin_page"
+                          ? "LinkedIn Business Page"
+                          : activeChannel === "threads"
+                          ? "Threads"
+                          : activeChannel === "linkedin"
+                          ? "LinkedIn Personal"
+                          : activeChannel.charAt(0).toUpperCase() + activeChannel.slice(1)}
+                      </span>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-mono font-semibold">
+                        DONE
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-emerald-400/80 truncate">
+                      {currentPost.publishedAt
+                        ? `Published on ${new Date(currentPost.publishedAt).toLocaleString()}`
+                        : "Marked as published"}
+                      {currentPost.zernioPostId ? ` • Zernio ID: ${currentPost.zernioPostId}` : ""}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => updateStatusMutation.mutate({ postId: currentPost.id, status: "draft" })}
+                  disabled={updateStatusMutation.isPending}
+                  className="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[11px] font-medium border border-emerald-500/40 transition-colors shrink-0 ml-2"
+                  title="Reset status back to Pending"
+                >
+                  {updateStatusMutation.isPending ? "Updating..." : "Mark as Pending"}
+                </button>
+              </div>
+            ) : currentPost?.status === "scheduled" ? (
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-200 text-xs shadow-sm">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                    <Clock className="w-4 h-4 text-blue-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-blue-300 flex items-center gap-2">
+                      <span>Queued in Zernio</span>
+                      <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded font-mono font-semibold">
+                        QUEUED
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-blue-400/80 truncate">
+                      {currentPost.scheduledFor
+                        ? `Scheduled for ${new Date(currentPost.scheduledFor).toLocaleString()}`
+                        : "Queued for automatic publishing"}
+                      {currentPost.zernioPostId ? ` • Zernio ID: ${currentPost.zernioPostId}` : ""}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => updateStatusMutation.mutate({ postId: currentPost.id, status: "draft" })}
+                  disabled={updateStatusMutation.isPending}
+                  className="px-2.5 py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-[11px] font-medium border border-blue-500/40 transition-colors shrink-0 ml-2"
+                >
+                  {updateStatusMutation.isPending ? "Updating..." : "Reset to Draft"}
+                </button>
+              </div>
+            ) : currentPost?.status === "failed" ? (
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-200 text-xs shadow-sm">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center shrink-0">
+                    <AlertCircle className="w-4 h-4 text-rose-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-rose-300 flex items-center gap-2">
+                      <span>Publishing Failed</span>
+                      <span className="text-[10px] bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded font-mono font-semibold">
+                        ERROR
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-rose-400/90 truncate">
+                      {currentPost.errorMessage || "Unknown error occurred"}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => updateStatusMutation.mutate({ postId: currentPost.id, status: "draft" })}
+                  disabled={updateStatusMutation.isPending}
+                  className="px-2.5 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-[11px] font-medium border border-rose-500/40 transition-colors shrink-0 ml-2"
+                >
+                  Dismiss
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                  <span className="text-slate-300 font-medium">Pending: Not published yet on this channel.</span>
+                </div>
+                {currentPost && (
+                  <button
+                    type="button"
+                    onClick={() => updateStatusMutation.mutate({ postId: currentPost.id, status: "published" })}
+                    disabled={updateStatusMutation.isPending}
+                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-300 text-[11px] font-medium border border-slate-700 hover:border-emerald-500/30 transition-colors"
+                    title="Mark this channel as published if completed elsewhere"
+                  >
+                    {updateStatusMutation.isPending ? "Updating..." : "Mark as Done"}
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* LinkedIn Shared Content Indicators */}
             {activeChannel === "linkedin_page" && (
@@ -1721,15 +2047,25 @@ export default function ContentDetailPage({
                   type="button"
                   disabled={publishMutation.isPending}
                   onClick={() => publishMutation.mutate()}
-                  className="flex items-center justify-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium shadow-lg shadow-indigo-600/25 transition-all disabled:opacity-50"
+                  className={`flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-xs font-medium shadow-lg transition-all disabled:opacity-50 ${
+                    currentPost?.status === "published"
+                      ? "bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 shadow-slate-900/50"
+                      : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/25"
+                  }`}
                 >
                   {publishMutation.isPending ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : currentPost?.status === "published" ? (
+                    <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
                   ) : (
                     <Clock className="w-3.5 h-3.5" />
                   )}
                   <span>
-                    {currentPost?.status === "scheduled" ? "Re-queue to" : "Queue to"}{" "}
+                    {currentPost?.status === "published"
+                      ? "Re-publish to"
+                      : currentPost?.status === "scheduled"
+                      ? "Re-queue to"
+                      : "Queue to"}{" "}
                     {activeChannel === "linkedin_page"
                       ? "LinkedIn Page"
                       : activeChannel === "threads"
