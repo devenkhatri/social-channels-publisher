@@ -9,6 +9,7 @@ import {
   KeyRound,
   Activity,
   CalendarClock,
+  Database,
   LogOut,
   Share2,
   ExternalLink,
@@ -32,6 +33,11 @@ const NAV_ITEMS = [
     name: "Queues",
     href: "/queues",
     icon: CalendarClock,
+  },
+  {
+    name: "Database",
+    href: "/database",
+    icon: Database,
   },
   {
     name: "Activity Log",

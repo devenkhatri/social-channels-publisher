@@ -15,8 +15,42 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || "https://social-publisher.local"
+  ),
   title: "Social Channels Publisher",
-  description: "Automated multi-channel publishing to LinkedIn, YouTube, Instagram, Facebook, and Skool via OneDrive and Zernio",
+  description:
+    "Automated multi-channel publishing to LinkedIn, YouTube, Instagram, Facebook, and Skool via OneDrive and Zernio.",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  openGraph: {
+    title: "Social Channels Publisher",
+    description:
+      "Automated multi-channel publishing to LinkedIn, YouTube, Instagram, Facebook, and Skool via OneDrive and Zernio.",
+    type: "website",
+    siteName: "Social Channels Publisher",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Social Channels Publisher - Automated Multi-Channel Publishing",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Social Channels Publisher",
+    description:
+      "Automated multi-channel publishing to LinkedIn, YouTube, Instagram, Facebook, and Skool via OneDrive and Zernio.",
+    images: ["/og-image.png"],
+  },
 };
 
 import { Suspense } from "react";

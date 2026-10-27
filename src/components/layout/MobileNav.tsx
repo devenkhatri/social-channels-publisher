@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FolderSync, CalendarClock, Activity, Cloud, KeyRound } from "lucide-react";
+import { LayoutDashboard, FolderSync, CalendarClock, Database, Activity, Cloud, KeyRound } from "lucide-react";
 
 const NAV_ITEMS = [
   {
@@ -19,6 +19,11 @@ const NAV_ITEMS = [
     name: "Queues",
     href: "/queues",
     icon: CalendarClock,
+  },
+  {
+    name: "Database",
+    href: "/database",
+    icon: Database,
   },
   {
     name: "Activity",
@@ -42,7 +47,7 @@ export function MobileNav() {
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 pb-safe transition-colors">
-      <div className="grid grid-cols-6 h-16">
+      <div className="grid grid-cols-7 h-16">
         {NAV_ITEMS.map((item) => {
           const isActive =
             item.href === "/"

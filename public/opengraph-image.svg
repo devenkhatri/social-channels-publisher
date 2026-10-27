@@ -1,0 +1,219 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <!-- Dark Tech Canvas Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#09090b"/>
+      <stop offset="40%" stop-color="#121218"/>
+      <stop offset="100%" stop-color="#030305"/>
+    </linearGradient>
+
+    <!-- Mesh Glow Blobs -->
+    <radialGradient id="indigoGlow" cx="20%" cy="30%" r="50%">
+      <stop offset="0%" stop-color="#6366f1" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="purpleGlow" cx="80%" cy="70%" r="60%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#a855f7" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="cyanGlow" cx="75%" cy="20%" r="40%">
+      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Logo Gradients -->
+    <linearGradient id="logoBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1e24"/>
+      <stop offset="100%" stop-color="#0a0a0d"/>
+    </linearGradient>
+
+    <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="50%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#f472b6"/>
+    </linearGradient>
+
+    <!-- Drop Shadows -->
+    <filter id="shadowLg" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="24" stdDeviation="32" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+
+    <filter id="pillShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="1200" height="630" fill="url(#bgGrad)"/>
+  
+  <!-- Glowing Light Orbs -->
+  <rect width="1200" height="630" fill="url(#indigoGlow)"/>
+  <rect width="1200" height="630" fill="url(#purpleGlow)"/>
+  <rect width="1200" height="630" fill="url(#cyanGlow)"/>
+
+  <!-- Subtle Blueprint Tech Grid -->
+  <g stroke="rgba(255,255,255,0.035)" stroke-width="1">
+    <line x1="80" y1="0" x2="80" y2="630"/>
+    <line x1="200" y1="0" x2="200" y2="630"/>
+    <line x1="320" y1="0" x2="320" y2="630"/>
+    <line x1="440" y1="0" x2="440" y2="630"/>
+    <line x1="560" y1="0" x2="560" y2="630"/>
+    <line x1="680" y1="0" x2="680" y2="630"/>
+    <line x1="800" y1="0" x2="800" y2="630"/>
+    <line x1="920" y1="0" x2="920" y2="630"/>
+    <line x1="1040" y1="0" x2="1040" y2="630"/>
+    <line x1="1160" y1="0" x2="1160" y2="630"/>
+
+    <line x1="0" y1="70" x2="1200" y2="70"/>
+    <line x1="0" y1="175" x2="1200" y2="175"/>
+    <line x1="0" y1="280" x2="1200" y2="280"/>
+    <line x1="0" y1="385" x2="1200" y2="385"/>
+    <line x1="0" y1="490" x2="1200" y2="490"/>
+    <line x1="0" y1="595" x2="1200" y2="595"/>
+  </g>
+
+  <!-- Outer Canvas Border -->
+  <rect x="20" y="20" width="1160" height="590" rx="24" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+
+  <!-- Left Content Column -->
+  <g transform="translate(80, 80)">
+    <!-- Top Chip: Status / Ecosystem -->
+    <g transform="translate(0, 0)">
+      <rect width="270" height="36" rx="18" fill="rgba(255, 255, 255, 0.06)" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1"/>
+      <circle cx="18" cy="18" r="4.5" fill="#10b981"/>
+      <text x="32" y="23" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#e4e4e7" letter-spacing="0.5">
+        ONEDRIVE • ZERNIO • AUTOMATION
+      </text>
+    </g>
+
+    <!-- Main Title -->
+    <text x="0" y="105" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="52" font-weight="800" fill="#ffffff" letter-spacing="-1.5">
+      Social Channels
+    </text>
+    <text x="0" y="165" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="52" font-weight="800" fill="url(#brandGrad)" letter-spacing="-1.5">
+      Publisher
+    </text>
+
+    <!-- Subtitle / Tagline -->
+    <text x="0" y="222" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="400" fill="#a1a1aa" line-height="28">
+      Sync content folders from OneDrive and automatically schedule, queue,
+    </text>
+    <text x="0" y="248" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="400" fill="#a1a1aa">
+      and publish across all your social channels simultaneously.
+    </text>
+
+    <!-- Channel Destination Chips -->
+    <g transform="translate(0, 290)">
+      <!-- LinkedIn -->
+      <g transform="translate(0, 0)">
+        <rect width="105" height="34" rx="10" fill="rgba(14, 165, 233, 0.12)" stroke="rgba(14, 165, 233, 0.3)" stroke-width="1"/>
+        <text x="18" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="700" fill="#38bdf8">
+          LinkedIn
+        </text>
+      </g>
+      <!-- YouTube -->
+      <g transform="translate(117, 0)">
+        <rect width="105" height="34" rx="10" fill="rgba(239, 68, 68, 0.12)" stroke="rgba(239, 68, 68, 0.3)" stroke-width="1"/>
+        <text x="18" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="700" fill="#f87171">
+          YouTube
+        </text>
+      </g>
+      <!-- Instagram -->
+      <g transform="translate(234, 0)">
+        <rect width="112" height="34" rx="10" fill="rgba(236, 72, 153, 0.12)" stroke="rgba(236, 72, 153, 0.3)" stroke-width="1"/>
+        <text x="18" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="700" fill="#f472b6">
+          Instagram
+        </text>
+      </g>
+      <!-- Facebook -->
+      <g transform="translate(358, 0)">
+        <rect width="110" height="34" rx="10" fill="rgba(59, 130, 246, 0.12)" stroke="rgba(59, 130, 246, 0.3)" stroke-width="1"/>
+        <text x="18" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="700" fill="#60a5fa">
+          Facebook
+        </text>
+      </g>
+      <!-- Threads -->
+      <g transform="translate(480, 0)">
+        <rect width="98" height="34" rx="10" fill="rgba(244, 244, 245, 0.1)" stroke="rgba(244, 244, 245, 0.2)" stroke-width="1"/>
+        <text x="18" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="700" fill="#e4e4e7">
+          Threads
+        </text>
+      </g>
+    </g>
+
+    <!-- Bottom Highlights -->
+    <g transform="translate(0, 390)">
+      <g transform="translate(0, 0)">
+        <text x="0" y="0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="800" fill="#ffffff">
+          1-Click
+        </text>
+        <text x="0" y="20" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="500" fill="#71717a" uppercase="true">
+          Multi-Channel Publishing
+        </text>
+      </g>
+      <line x1="160" y1="-15" x2="160" y2="25" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <g transform="translate(190, 0)">
+        <text x="0" y="0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="800" fill="#ffffff">
+          Live Queues
+        </text>
+        <text x="0" y="20" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="500" fill="#71717a">
+          Across Zernio Accounts
+        </text>
+      </g>
+      <line x1="365" y1="-15" x2="365" y2="25" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <g transform="translate(395, 0)">
+        <text x="0" y="0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="800" fill="#ffffff">
+          Zero Code
+        </text>
+        <text x="0" y="20" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="500" fill="#71717a">
+          Folder-Based Automation
+        </text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Right Visual Graphics: 3D App Icon & Node Satellite -->
+  <g transform="translate(770, 110)">
+    <!-- Shadow Base -->
+    <rect x="40" y="40" width="300" height="300" rx="72" fill="#000000" filter="url(#shadowLg)" opacity="0.7"/>
+
+    <!-- Glass Card Container -->
+    <rect x="40" y="40" width="300" height="300" rx="72" fill="url(#logoBg)" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+
+    <!-- Central Floating App Icon Symbol -->
+    <!-- Network Connector Lines -->
+    <line x1="140" y1="190" x2="250" y2="120" stroke="#818cf8" stroke-width="10" stroke-linecap="round" opacity="0.8"/>
+    <line x1="140" y1="190" x2="250" y2="260" stroke="#c084fc" stroke-width="10" stroke-linecap="round" opacity="0.8"/>
+
+    <!-- Nodes -->
+    <!-- Center Hub -->
+    <circle cx="140" cy="190" r="54" fill="url(#brandGrad)"/>
+    <g transform="translate(112, 162)">
+      <path d="M 8 32 L 48 8 L 28 48 L 24 34 Z" fill="#ffffff"/>
+      <path d="M 24 34 L 48 8 L 24 28 Z" fill="#e0e7ff"/>
+    </g>
+
+    <!-- Top Right Node (LinkedIn) -->
+    <circle cx="250" cy="120" r="32" fill="#0284c7" stroke="#38bdf8" stroke-width="4"/>
+    <circle cx="250" cy="120" r="10" fill="#ffffff"/>
+
+    <!-- Bottom Right Node (Instagram) -->
+    <circle cx="250" cy="260" r="36" fill="#ec4899" stroke="#f472b6" stroke-width="4"/>
+    <rect x="236" y="246" width="28" height="28" rx="7" fill="none" stroke="#ffffff" stroke-width="4"/>
+    <circle cx="250" cy="260" r="7" fill="none" stroke="#ffffff" stroke-width="3"/>
+
+    <!-- Floating Badge Preview on Top of Right Visual -->
+    <g transform="translate(80, 310)" filter="url(#pillShadow)">
+      <rect width="250" height="52" rx="16" fill="#18181b" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"/>
+      <circle cx="28" cy="26" r="10" fill="#10b981"/>
+      <text x="48" y="24" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="700" fill="#ffffff">
+        Status: Scheduled
+      </text>
+      <text x="48" y="39" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="500" fill="#71717a">
+        Ready for multi-channel push
+      </text>
+    </g>
+  </g>
+</svg>

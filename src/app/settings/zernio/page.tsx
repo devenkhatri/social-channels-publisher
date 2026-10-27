@@ -255,10 +255,10 @@ export default function ZernioSettingsPage() {
             setIsAdding(!isAdding);
             setTestResult(null);
           }}
-          className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 text-xs font-medium shadow-sm transition-all min-h-[38px] cursor-pointer"
+          className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 text-xs font-medium shadow-sm transition-all min-h-[38px] cursor-pointer whitespace-nowrap shrink-0"
         >
-          <Plus className="w-4 h-4" />
-          <span>Add Account</span>
+          <Plus className="w-4 h-4 shrink-0" />
+          <span className="whitespace-nowrap">Add Account</span>
         </button>
       </div>
 
