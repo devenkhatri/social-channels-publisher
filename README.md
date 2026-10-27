@@ -56,7 +56,7 @@ flowchart TD
         SYNC[Sync Engine & Graph API Client]
         PARSE[Markdown & Asset Extractor]
         RAST["@resvg/resvg-js Rasterizer"]
-        DB[(SQLite / Drizzle ORM)]
+        DB[(Turso libSQL / Drizzle ORM)]
         DASH[Dashboard & Batch Dock]
         EDIT[Channel Editor & Slide Viewer]
         ACT[Activity Logger]
@@ -172,13 +172,19 @@ Create a `.env.local` file in the project root:
 # Application Secrets
 ADMIN_PASSWORD=your_secure_admin_password
 SESSION_SECRET=a_random_32_character_string_for_session_encryption
+
+# Database (Turso Serverless libSQL - Recommended for Vercel)
+TURSO_DATABASE_URL=libsql://your-database-name.turso.io
+TURSO_AUTH_TOKEN=your_turso_jwt_auth_token
+
+# Local Database Fallback (Used if Turso is not specified)
 DATABASE_URL=file:./data/social-publisher.db
 
 # Microsoft Graph API (OneDrive)
 AZURE_CLIENT_ID=your_azure_client_id
 AZURE_CLIENT_SECRET=your_azure_client_secret
 AZURE_TENANT_ID=common
-AZURE_REDIRECT_URI=http://localhost:3000/api/onedrive/callback
+AZURE_REDIRECT_URI=http://localhost:3000/auth/microsoft/callback
 
 # Data Encryption (AES-256-GCM key for encrypted Zernio API keys)
 ENCRYPTION_KEY=64_character_hex_string_representing_32_bytes
@@ -197,7 +203,7 @@ ENCRYPTION_KEY=64_character_hex_string_representing_32_bytes
 # Install dependencies
 npm install
 
-# Run database migrations
+# Push schema to database
 npm run db:push
 
 # Start development server
@@ -211,6 +217,51 @@ Open [http://localhost:3000](http://localhost:3000) in your browser:
 4. Navigate to **Zernio Accounts** (`/settings/zernio`) and add your Zernio API key.
 5. Click **Sync from OneDrive** on the dashboard to pull all pending content packages!
 
+---
+
+## ☁️ Serverless Deployment on Vercel with Turso
+
+Vercel executes Next.js API routes and server actions inside ephemeral, read-only serverless functions (`AWS Lambda`). Traditional file-based SQLite (`better-sqlite3`) cannot persist data or acquire write locks on Vercel. 
+
+To solve this seamlessly without altering the relational SQLite schema, this project uses **[Turso](https://turso.tech)** (serverless libSQL) with **Drizzle ORM** via `@libsql/client`.
+
+### 1. Provision Turso Database
+1. Create a free account at [turso.tech](https://turso.tech).
+2. Create a new database:
+   ```bash
+   turso db create social-publisher
+   ```
+3. Retrieve your database URL and authentication token:
+   ```bash
+   turso db show social-publisher --url
+   turso db tokens create social-publisher
+   ```
+
+### 2. Migrate Local Data to Turso (1-Click)
+If you already have local data (Zernio accounts, connections, settings, content items) stored in `data/social-publisher.db`, copy everything directly to Turso with one command:
+
+```bash
+npm run db:migrate-to-turso
+```
+
+*(Reads `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` from `.env.local` or inline environment variables).*
+
+### 3. Vercel Environment Variables
+In your Vercel project dashboard under **Settings &rarr; Environment Variables**, configure:
+
+| Variable | Description |
+|---|---|
+| `TURSO_DATABASE_URL` | `libsql://your-database-name.turso.io` |
+| `TURSO_AUTH_TOKEN` | Your Turso JWT auth token |
+| `ADMIN_PASSWORD` | Password used to log in at `/auth/login` |
+| `SESSION_SECRET` | 32+ character string for encrypted session cookies |
+| `ENCRYPTION_KEY` | **Must match your local key** (64 hex characters) so encrypted Zernio API keys in the DB can be decrypted |
+| `AZURE_CLIENT_ID` | Microsoft Azure App Registration Application ID |
+| `AZURE_CLIENT_SECRET` | Microsoft Azure Client Secret |
+| `AZURE_TENANT_ID` | Azure Tenant ID (typically `common`) |
+| `AZURE_REDIRECT_URI` | `https://<your-vercel-domain>.vercel.app/auth/microsoft/callback` |
+
+> **Note on Azure Redirect URI**: Ensure `https://<your-vercel-domain>.vercel.app/auth/microsoft/callback` is added to the **Redirect URIs** in your Azure App Registration under **Authentication &rarr; Web**.
 
 ---
 
@@ -221,11 +272,12 @@ Open [http://localhost:3000](http://localhost:3000) in your browser:
 | **Next.js 16** (App Router) | Core framework with Turbopack, React Server Components, and Partial Prerendering |
 | **TypeScript** | Strict type safety across API routes and client interfaces |
 | **Tailwind CSS v4** | Clean, fast, modern SaaS design system |
-| **SQLite + Drizzle ORM** | Portable, zero-maintenance local relational database |
+| **Turso (libSQL) + Drizzle ORM** | Serverless SQLite relational database via `@libsql/client` (Vercel + local dev support) |
 | **@resvg/resvg-js** | High-performance native SVG to PNG rasterizer |
 | **Microsoft Graph SDK** | Delegated OAuth 2.0 client for OneDrive content & folder renames |
-| **Zernio REST API** | Multi-platform publishing engine for LinkedIn, YouTube, Instagram, and Facebook |
+| **Zernio REST API** | Multi-platform publishing engine for LinkedIn, YouTube, Instagram, Facebook, and Threads |
 | **TanStack React Query** | Optimistic UI, background caching, and automatic refetching |
+
 
 ---
 
