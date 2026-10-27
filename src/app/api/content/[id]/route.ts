@@ -131,15 +131,25 @@ export async function GET(
           const targetThreadsBody = twExt.threadVariant || twExt.singleTweetVariant || twExt.body || "";
 
           const threadsPost = posts.find((p) => p.channel === "threads");
-          if (threadsPost && threadsPost.status === "draft" && targetThreadsBody && threadsPost.body !== targetThreadsBody) {
-            await db
-              .update(schema.channelPosts)
-              .set({
-                body: targetThreadsBody,
-                updatedAt: new Date().toISOString(),
-              })
-              .where(eq(schema.channelPosts.id, threadsPost.id));
-            threadsPost.body = targetThreadsBody;
+          if (threadsPost && threadsPost.status === "draft") {
+            const updates: any = {};
+            if (targetThreadsBody && threadsPost.body !== targetThreadsBody) {
+              updates.body = targetThreadsBody;
+              threadsPost.body = targetThreadsBody;
+            }
+            if (threadsPost.postType === "feed" && assets.slides && assets.slides.length > 0) {
+              updates.postType = "carousel";
+              updates.mediaType = "carousel";
+              threadsPost.postType = "carousel";
+              threadsPost.mediaType = "carousel";
+            }
+            if (Object.keys(updates).length > 0) {
+              updates.updatedAt = new Date().toISOString();
+              await db
+                .update(schema.channelPosts)
+                .set(updates)
+                .where(eq(schema.channelPosts.id, threadsPost.id));
+            }
           }
         } catch (twErr) {
           console.warn("Could not extract twitter/threads content:", twErr);

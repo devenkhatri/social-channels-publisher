@@ -329,7 +329,9 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
         }
       }
     } else if (post.channel === "threads" || post.channel === "twitter" || post.channel === "x") {
-      if (post.postType === "video" || (!post.postType && (hyperframesVideo || regularVideo))) {
+      if (post.postType === "feed") {
+        // Pure text post / thread — do not attach media
+      } else if (post.postType === "video" || (!post.postType && !slidesFolder && (hyperframesVideo || regularVideo))) {
         const video = hyperframesVideo || regularVideo;
         if (video) {
           const buffer = await getFileBuffer(video.id, video.downloadUrl);
@@ -342,14 +344,21 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
           uploadedMediaUrls.push(publicUrl);
           mediaItems.push({ type: "video", url: publicUrl });
         }
-      } else if (slidesFolder) {
-        // Threads supports up to 10 images; Twitter allows up to 4
+      } else if (post.postType === "carousel" || slidesFolder || (!post.postType && slidesFolder)) {
+        // Threads supports up to 10 images in a carousel; Twitter allows up to 4
         const maxImages = post.channel === "threads" ? 10 : 4;
-        const slideFiles = await listFolderChildren(slidesFolder.id);
-        const imageSlides = slideFiles.filter(
-          (f) => !f.isFolder && /\.(svg|png|jpg|jpeg|webp)$/i.test(f.name)
-        );
-        const sorted = sortSlidesNaturally(imageSlides).slice(0, maxImages);
+        let candidateFiles: Array<{ id: string; name: string; downloadUrl?: string; size?: number }> = [];
+
+        if (slidesFolder) {
+          const slideFiles = await listFolderChildren(slidesFolder.id);
+          candidateFiles = slideFiles.filter(
+            (f) => !f.isFolder && /\.(svg|png|jpg|jpeg|webp)$/i.test(f.name)
+          );
+        } else if (coverFile) {
+          candidateFiles = [coverFile];
+        }
+
+        const sorted = sortSlidesNaturally(candidateFiles).slice(0, maxImages);
         for (const slide of sorted) {
           if (slide.name.endsWith(".svg")) {
             const svgText = await getFileContentAsText(slide.id, slide.downloadUrl);
@@ -364,11 +373,17 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
             mediaItems.push({ type: "image", url: publicUrl });
           } else {
             const buffer = await getFileBuffer(slide.id, slide.downloadUrl);
+            let contentType = "image/png";
+            if (/\.jpe?g$/i.test(slide.name)) {
+              contentType = "image/jpeg";
+            } else if (/\.webp$/i.test(slide.name)) {
+              contentType = "image/webp";
+            }
             const { publicUrl } = await uploadMediaToZernio(
               apiKey,
               buffer,
               slide.name,
-              "image/png"
+              contentType
             );
             uploadedMediaUrls.push(publicUrl);
             mediaItems.push({ type: "image", url: publicUrl });
@@ -388,11 +403,17 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
           mediaItems.push({ type: "image", url: publicUrl });
         } else {
           const buffer = await getFileBuffer(coverFile.id, coverFile.downloadUrl);
+          let contentType = "image/png";
+          if (/\.jpe?g$/i.test(coverFile.name)) {
+            contentType = "image/jpeg";
+          } else if (/\.webp$/i.test(coverFile.name)) {
+            contentType = "image/webp";
+          }
           const { publicUrl } = await uploadMediaToZernio(
             apiKey,
             buffer,
             coverFile.name,
-            "image/png"
+            contentType
           );
           uploadedMediaUrls.push(publicUrl);
           mediaItems.push({ type: "image", url: publicUrl });
@@ -502,15 +523,17 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
     }
 
     // For Threads (and Twitter/X), support multithread publishing via Zernio platformSpecificData.threadItems
+    let postContentToSend = stripMarkdown(postBody);
     if (post.channel === "threads" || post.channel === "twitter" || post.channel === "x") {
       const threadItems = parseThreadItems(postBody);
       if (threadItems.length > 1) {
-        platformSpecificData.threadItems = threadItems.map((item, idx) => {
-          const cleanItem = stripMarkdown(item);
-          if (idx === 0 && mediaItems.length > 0) {
-            return { content: cleanItem, mediaItems };
-          }
-          return { content: cleanItem };
+        // In Zernio's API for threads and twitter:
+        // - 'content' is the root post (threadItems[0])
+        // - 'mediaItems' on root payload attaches carousel to the root post (where Meta Threads supports carousels)
+        // - 'platformSpecificData.threadItems' contains only the SUBSEQUENT reply posts (threadItems.slice(1))
+        postContentToSend = stripMarkdown(threadItems[0]);
+        platformSpecificData.threadItems = threadItems.slice(1).map((item) => {
+          return { content: stripMarkdown(item) };
         });
       }
     }
@@ -559,7 +582,7 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
     const payload: ZernioPublishPayload = {
       platform: post.channel as any,
       accountId: targetAccountId,
-      content: stripMarkdown(postBody),
+      content: postContentToSend,
       title: postTitle ? stripMarkdown(postTitle) : undefined,
       mediaItems: mediaItems.length > 0 ? mediaItems : undefined,
       mediaUrls: uploadedMediaUrls.length > 0 ? uploadedMediaUrls : undefined,

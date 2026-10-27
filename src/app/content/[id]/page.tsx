@@ -202,10 +202,14 @@ export default function ContentDetailPage({
         setActiveMediaTab("video");
       }
     } else if (activeChannel === "threads") {
-      if (assets.hyperframesVideo || (assets.videos && assets.videos.length > 0)) {
+      if (currentPostType === "video" && (assets.hyperframesVideo || (assets.videos && assets.videos.length > 0))) {
         setActiveMediaTab("video");
+      } else if (currentPostType === "carousel" && assets.slides && assets.slides.length > 0) {
+        setActiveMediaTab("slides");
       } else if (assets.slides && assets.slides.length > 0) {
         setActiveMediaTab("slides");
+      } else if (assets.hyperframesVideo || (assets.videos && assets.videos.length > 0)) {
+        setActiveMediaTab("video");
       } else if (assets.coverFile) {
         setActiveMediaTab("cover");
       }
@@ -1767,21 +1771,15 @@ export default function ContentDetailPage({
                     <>
                       <button
                         type="button"
-                        onClick={() => handleFormChange("postType", "video")}
-                        className={`py-2 px-3 rounded-xl text-xs font-medium border text-center transition-all ${
-                          currentForm.postType === "video"
-                            ? "bg-indigo-600/20 text-indigo-300 border-indigo-500"
-                            : "bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700"
-                        }`}
-                      >
-                        📹 Video Post
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleFormChange("postType", "carousel")}
+                        onClick={() => {
+                          handleFormChange("postType", "carousel");
+                          if (assets.slides && assets.slides.length > 0) {
+                            setActiveMediaTab("slides");
+                          }
+                        }}
                         className={`py-2 px-3 rounded-xl text-xs font-medium border text-center transition-all ${
                           currentForm.postType === "carousel"
-                            ? "bg-indigo-600/20 text-indigo-300 border-indigo-500"
+                            ? "bg-indigo-600/20 text-indigo-300 border-indigo-500 ring-1 ring-indigo-500/30"
                             : "bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700"
                         }`}
                       >
@@ -1789,10 +1787,24 @@ export default function ContentDetailPage({
                       </button>
                       <button
                         type="button"
+                        onClick={() => {
+                          handleFormChange("postType", "video");
+                          setActiveMediaTab("video");
+                        }}
+                        className={`py-2 px-3 rounded-xl text-xs font-medium border text-center transition-all ${
+                          currentForm.postType === "video"
+                            ? "bg-indigo-600/20 text-indigo-300 border-indigo-500 ring-1 ring-indigo-500/30"
+                            : "bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700"
+                        }`}
+                      >
+                        📹 Video Post
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleFormChange("postType", "feed")}
                         className={`py-2 px-3 rounded-xl text-xs font-medium border text-center transition-all ${
                           currentForm.postType === "feed"
-                            ? "bg-indigo-600/20 text-indigo-300 border-indigo-500"
+                            ? "bg-indigo-600/20 text-indigo-300 border-indigo-500 ring-1 ring-indigo-500/30"
                             : "bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700"
                         }`}
                       >
@@ -1839,6 +1851,28 @@ export default function ContentDetailPage({
                     </>
                   )}
                 </div>
+
+                {/* Helpful Threads media badge */}
+                {activeChannel === "threads" && (
+                  <div className="text-[11px] mt-2 p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80">
+                    {currentForm.postType === "carousel" ? (
+                      <span className="text-emerald-400 font-medium flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span><strong>Image Carousel Active:</strong> Up to 10 slides from this folder will be attached to your first post.</span>
+                      </span>
+                    ) : currentForm.postType === "video" ? (
+                      <span className="text-blue-400 font-medium flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span><strong>Video Active:</strong> MP4 video will be attached to your first post.</span>
+                      </span>
+                    ) : (
+                      <span className="text-amber-300 font-medium flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span><strong>Text Only:</strong> No images or video will be attached. Choose <em>Image / Slides</em> above if you want your carousel attached.</span>
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

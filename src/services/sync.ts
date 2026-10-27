@@ -340,12 +340,12 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
         // Zernio supports multithreaded sequences on Threads via platformSpecificData.threadItems!
         // Use multithreaded variant if available; otherwise fallback to single tweet variant or caption.
         postBody = twitterExtract.threadVariant || twitterExtract.singleTweetVariant || captionExtract.body || "";
-        if (hyperframesVideo || regularVideo) {
-          mediaType = "video";
-          postType = "video";
-        } else if (sortedSlides.length > 0) {
+        if (sortedSlides.length > 0) {
           mediaType = "carousel";
           postType = "carousel";
+        } else if (hyperframesVideo || regularVideo) {
+          mediaType = "video";
+          postType = "video";
         } else if (coverFile) {
           mediaType = "cover";
           postType = "feed";
