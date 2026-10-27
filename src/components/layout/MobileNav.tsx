@@ -36,7 +36,7 @@ export function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800 pb-safe">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 pb-safe transition-colors">
       <div className="grid grid-cols-5 h-16">
         {NAV_ITEMS.map((item) => {
           const isActive =
@@ -51,18 +51,20 @@ export function MobileNav() {
               href={item.href}
               className={`flex flex-col items-center justify-center min-h-[48px] py-1 transition-colors ${
                 isActive
-                  ? "text-indigo-400 font-medium"
-                  : "text-slate-400 hover:text-slate-200"
+                  ? "text-zinc-900 dark:text-zinc-100 font-semibold"
+                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
               }`}
             >
               <div
-                className={`p-1 rounded-lg ${
-                  isActive ? "bg-indigo-600/15" : ""
+                className={`p-1.5 rounded-lg transition-colors ${
+                  isActive
+                    ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+                    : "text-zinc-500 dark:text-zinc-400"
                 }`}
               >
                 <Icon className="w-5 h-5" />
               </div>
-              <span className="text-[10px] mt-0.5">{item.name}</span>
+              <span className="text-[10px] mt-0.5 tracking-tight">{item.name}</span>
             </Link>
           );
         })}

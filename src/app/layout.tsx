@@ -20,6 +20,7 @@ export const metadata: Metadata = {
 };
 
 import { Suspense } from "react";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 
 export default function RootLayout({
   children,
@@ -29,16 +30,37 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-slate-950 text-slate-100 flex flex-col font-sans">
-        <QueryProvider>
-          <Suspense fallback={null}>
-            <AppShell>{children}</AppShell>
-          </Suspense>
-        </QueryProvider>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const theme = localStorage.getItem('scp_theme') || 'dark';
+                const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                if (isDark) {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
+      </head>
+      <body className="min-h-full bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 flex flex-col font-sans transition-colors duration-150">
+        <ThemeProvider>
+          <QueryProvider>
+            <Suspense fallback={null}>
+              <AppShell>{children}</AppShell>
+            </Suspense>
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
 }
+
 

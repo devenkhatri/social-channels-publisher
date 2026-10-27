@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, ArrowRight, Eye, EyeOff, ShieldCheck, Sparkles } from "lucide-react";
+import { Lock, ArrowRight, Eye, EyeOff, ShieldCheck, Share2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -43,28 +43,28 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center px-4 sm:px-6 relative overflow-hidden">
-      {/* Background ambient gradient glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-tr from-indigo-600/15 via-blue-600/10 to-violet-600/15 blur-3xl pointer-events-none rounded-full" />
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-col justify-center items-center px-4 sm:px-6 relative overflow-hidden transition-colors">
+      {/* Background ambient subtle blur */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-zinc-200/40 dark:bg-zinc-800/20 blur-3xl pointer-events-none rounded-full" />
 
       <div className="w-full max-w-md relative z-10">
         {/* Brand Header */}
         <div className="flex flex-col items-center mb-8 text-center">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 mb-4 ring-1 ring-white/20">
-            <Sparkles className="w-6 h-6 text-white" />
+          <div className="w-12 h-12 rounded-xl bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center shadow-md mb-4">
+            <Share2 className="w-6 h-6 text-white dark:text-zinc-900" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             Social Publisher
           </h1>
-          <p className="text-sm text-slate-400 mt-1.5 max-w-xs">
+          <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1.5 max-w-xs">
             OneDrive to multi-channel social publisher & content manager
           </p>
         </div>
 
         {/* Auth Card */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl shadow-black/50 backdrop-blur-xl">
-          <div className="flex items-center gap-2 mb-6 text-xs uppercase tracking-wider font-semibold text-slate-400">
-            <ShieldCheck className="w-4 h-4 text-indigo-400" />
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 shadow-xl dark:shadow-2xl dark:shadow-black/50">
+          <div className="flex items-center gap-2 mb-6 text-xs uppercase tracking-wider font-semibold text-zinc-500 dark:text-zinc-400">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span>Administrator Access</span>
           </div>
 
@@ -72,12 +72,12 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-xs font-medium text-slate-300 mb-2"
+                className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-2"
               >
                 Password
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-400">
                   <Lock className="w-4 h-4" />
                 </div>
                 <input
@@ -89,12 +89,12 @@ export default function LoginPage() {
                   placeholder="Enter administrator password..."
                   autoComplete="current-password"
                   autoFocus
-                  className="w-full pl-10 pr-11 py-3 text-sm bg-slate-950/70 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                  className="w-full pl-10 pr-11 py-3 text-sm bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 focus:border-zinc-900 dark:focus:border-zinc-100 transition-all min-h-[46px]"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 focus:outline-none transition-colors"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 focus:outline-none transition-colors min-h-[44px] min-w-[44px] justify-center"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
@@ -107,7 +107,7 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-medium animate-in fade-in slide-in-from-top-1">
+              <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-medium">
                 {error}
               </div>
             )}
@@ -115,10 +115,10 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full min-h-[46px] flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-500 hover:from-indigo-600 to-blue-600 hover:to-blue-700 text-white font-medium text-sm rounded-xl py-3 px-4 shadow-lg shadow-indigo-500/25 transition-all duration-150 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full min-h-[46px] flex items-center justify-center gap-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-medium text-sm rounded-xl py-3 px-4 shadow-sm hover:shadow transition-all duration-150 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {loading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-zinc-400 dark:border-zinc-600 border-t-zinc-900 dark:border-t-white rounded-full animate-spin" />
               ) : (
                 <>
                   <span>Sign In</span>
@@ -130,8 +130,8 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-slate-500 mt-6">
-          Default development password: <code className="text-slate-400 font-mono">admin123</code>
+        <p className="text-center text-xs text-zinc-500 dark:text-zinc-500 mt-6">
+          Default development password: <code className="text-zinc-700 dark:text-zinc-400 font-mono">admin123</code>
         </p>
       </div>
     </div>

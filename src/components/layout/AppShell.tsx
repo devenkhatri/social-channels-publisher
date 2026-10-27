@@ -10,11 +10,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isAuthPage = pathname.startsWith("/auth/login");
 
   if (isAuthPage) {
-    return <main className="min-h-screen bg-slate-950">{children}</main>;
+    return (
+      <main className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+        {children}
+      </main>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex">
+    <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 flex transition-colors">
       {/* Desktop Persistent Sidebar */}
       <Sidebar />
 
@@ -30,4 +34,5 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <MobileNav />
     </div>
   );
+
 }
