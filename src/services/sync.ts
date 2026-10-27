@@ -247,7 +247,7 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
         let mediaType: string | null = null;
         let postType: string | null = "feed";
 
-        if (channel === "linkedin" || channel === "linkedin_page") {
+        if (channel === "linkedin") {
           postTitle = linkedinExtract.title || captionExtract.title || primaryTitle;
           postBody = linkedinExtract.body || captionExtract.body || "";
           if (pdfFile) {
@@ -259,6 +259,36 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
           } else if (sortedSlides.length > 0) {
             mediaType = "carousel";
             postType = "carousel";
+          }
+        } else if (channel === "linkedin_page") {
+          // LinkedIn Business Page should use the same content as LinkedIn Personal
+          const liPost = await db
+            .select()
+            .from(schema.channelPosts)
+            .where(
+              and(
+                eq(schema.channelPosts.contentItemId, contentItemId),
+                eq(schema.channelPosts.channel, "linkedin")
+              )
+            );
+          if (liPost.length > 0) {
+            postTitle = liPost[0].title;
+            postBody = liPost[0].body;
+            mediaType = liPost[0].mediaType;
+            postType = liPost[0].postType;
+          } else {
+            postTitle = linkedinExtract.title || captionExtract.title || primaryTitle;
+            postBody = linkedinExtract.body || captionExtract.body || "";
+            if (pdfFile) {
+              mediaType = "pdf";
+              postType = "document";
+            } else if (hyperframesVideo || regularVideo) {
+              mediaType = "video";
+              postType = "video";
+            } else if (sortedSlides.length > 0) {
+              mediaType = "carousel";
+              postType = "carousel";
+            }
           }
         } else if (channel === "threads") {
           postTitle = null;
@@ -347,6 +377,33 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
               updatedAt: nowIso,
             })
             .where(eq(schema.channelPosts.id, post.id));
+        } else if (channel === "linkedin_page" && post.status === "draft") {
+          // Keep LinkedIn Business Page content in sync with LinkedIn Personal
+          const liPost = await db
+            .select()
+            .from(schema.channelPosts)
+            .where(
+              and(
+                eq(schema.channelPosts.contentItemId, contentItemId),
+                eq(schema.channelPosts.channel, "linkedin")
+              )
+            );
+          if (
+            liPost.length > 0 &&
+            liPost[0].body &&
+            (liPost[0].body !== post.body || liPost[0].title !== post.title || liPost[0].postType !== post.postType)
+          ) {
+            await db
+              .update(schema.channelPosts)
+              .set({
+                title: liPost[0].title,
+                body: liPost[0].body,
+                postType: liPost[0].postType,
+                mediaType: liPost[0].mediaType,
+                updatedAt: nowIso,
+              })
+              .where(eq(schema.channelPosts.id, post.id));
+          }
         }
       }
     }

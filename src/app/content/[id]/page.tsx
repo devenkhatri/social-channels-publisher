@@ -27,6 +27,7 @@ import {
   RotateCcw,
   Image as ImageIcon,
   Download,
+  Link2,
 } from "lucide-react";
 
 type ChannelType =
@@ -153,6 +154,20 @@ export default function ContentDetailPage({
           zernioProfileId: (p as any).zernioConnectionId || p.zernioProfileId || "",
         };
       });
+
+      // Ensure LinkedIn Business Page uses the same content as LinkedIn Personal
+      if (initial.linkedin && initial.linkedin_page) {
+        if (initial.linkedin.body || initial.linkedin.title) {
+          initial.linkedin_page.title = initial.linkedin.title;
+          initial.linkedin_page.body = initial.linkedin.body;
+          initial.linkedin_page.postType = initial.linkedin.postType;
+        } else if (initial.linkedin_page.body || initial.linkedin_page.title) {
+          initial.linkedin.title = initial.linkedin_page.title;
+          initial.linkedin.body = initial.linkedin_page.body;
+          initial.linkedin.postType = initial.linkedin_page.postType;
+        }
+      }
+
       setFormState(initial);
     }
   }, [data]);
@@ -210,9 +225,8 @@ export default function ContentDetailPage({
   };
 
   const handleFormChange = (field: string, value: string) => {
-    setFormState((prev) => ({
-      ...prev,
-      [activeChannel]: {
+    setFormState((prev) => {
+      const updatedChannelState = {
         ...(prev[activeChannel] || {
           title: "",
           body: "",
@@ -220,8 +234,40 @@ export default function ContentDetailPage({
           zernioProfileId: "",
         }),
         [field]: value,
-      },
-    }));
+      };
+
+      const next = {
+        ...prev,
+        [activeChannel]: updatedChannelState,
+      };
+
+      // Keep LinkedIn Personal and LinkedIn Business Page content in sync
+      if (field !== "zernioProfileId") {
+        if (activeChannel === "linkedin") {
+          next.linkedin_page = {
+            ...(prev.linkedin_page || {
+              title: "",
+              body: "",
+              postType: "feed",
+              zernioProfileId: "",
+            }),
+            [field]: value,
+          };
+        } else if (activeChannel === "linkedin_page") {
+          next.linkedin = {
+            ...(prev.linkedin || {
+              title: "",
+              body: "",
+              postType: "feed",
+              zernioProfileId: "",
+            }),
+            [field]: value,
+          };
+        }
+      }
+
+      return next;
+    });
   };
 
   // Save draft mutation
@@ -234,6 +280,21 @@ export default function ContentDetailPage({
         body: JSON.stringify(currentForm),
       });
       if (!res.ok) throw new Error("Failed to save changes");
+
+      // If saving LinkedIn or LinkedIn Page, also save the other channel post to keep database in sync
+      if (activeChannel === "linkedin" || activeChannel === "linkedin_page") {
+        const otherChannel = activeChannel === "linkedin" ? "linkedin_page" : "linkedin";
+        const otherPost = data?.posts.find((p) => p.channel === otherChannel);
+        const otherForm = formState[otherChannel];
+        if (otherPost && otherForm) {
+          await fetch(`/api/posts/${otherPost.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(otherForm),
+          });
+        }
+      }
+
       return res.json();
     },
     onSuccess: () => {
@@ -263,6 +324,20 @@ export default function ContentDetailPage({
       if (!saveRes.ok) {
         const errJson = await saveRes.json();
         throw new Error(errJson.error || "Failed to save draft before publishing");
+      }
+
+      // If publishing LinkedIn or LinkedIn Page, also save the other channel post
+      if (activeChannel === "linkedin" || activeChannel === "linkedin_page") {
+        const otherChannel = activeChannel === "linkedin" ? "linkedin_page" : "linkedin";
+        const otherPost = data?.posts.find((p) => p.channel === otherChannel);
+        const otherForm = formState[otherChannel];
+        if (otherPost && otherForm) {
+          await fetch(`/api/posts/${otherPost.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(otherForm),
+          });
+        }
       }
 
       const res = await fetch("/api/zernio/publish", {
@@ -1103,6 +1178,46 @@ export default function ContentDetailPage({
                 </a>
               )}
             </div>
+
+            {/* LinkedIn Shared Content Indicators */}
+            {activeChannel === "linkedin_page" && (
+              <div className="flex items-center justify-between p-3 rounded-xl bg-sky-500/10 border border-sky-500/25 text-sky-200 text-xs">
+                <div className="flex items-center gap-2">
+                  <Link2 className="w-4 h-4 text-sky-400 shrink-0" />
+                  <span>
+                    <strong>LinkedIn Sync:</strong> Business Page automatically uses the same title, body, and media format as your LinkedIn Personal post.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const li = formState.linkedin;
+                    if (li) {
+                      setFormState((prev) => ({
+                        ...prev,
+                        linkedin_page: {
+                          title: li.title,
+                          body: li.body,
+                          postType: li.postType,
+                          zernioProfileId: prev.linkedin_page?.zernioProfileId || "",
+                        },
+                      }));
+                      setToastMessage({ text: "Content synced from LinkedIn Personal!", type: "success" });
+                      setTimeout(() => setToastMessage(null), 3000);
+                    }
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 hover:text-white font-medium transition-colors shrink-0"
+                >
+                  Copy from LinkedIn
+                </button>
+              </div>
+            )}
+            {activeChannel === "linkedin" && (
+              <div className="flex items-center gap-2 text-[11px] text-slate-400 -mt-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+                <span>Content edits here are automatically shared with your <strong>LinkedIn Business Page</strong></span>
+              </div>
+            )}
 
             {/* Error banner if previous publish failed */}
             {currentPost?.errorMessage && (

@@ -420,14 +420,42 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
     }
 
     // 4. Construct payload and queue to Zernio
+    let postBody = post.body || "";
+    let postTitle = post.title;
+    let postType = post.postType;
+
+    // LinkedIn Business Page should use the same content as LinkedIn Personal
+    if (post.channel === "linkedin_page") {
+      const liPost = await db
+        .select()
+        .from(schema.channelPosts)
+        .where(
+          and(
+            eq(schema.channelPosts.contentItemId, post.contentItemId),
+            eq(schema.channelPosts.channel, "linkedin")
+          )
+        );
+      if (liPost.length > 0) {
+        if (liPost[0].body) {
+          postBody = liPost[0].body;
+        }
+        if (liPost[0].title) {
+          postTitle = liPost[0].title;
+        }
+        if (liPost[0].postType) {
+          postType = liPost[0].postType;
+        }
+      }
+    }
+
     const payload: ZernioPublishPayload = {
       platform: post.channel as any,
       accountId: targetAccountId,
-      content: stripMarkdown(post.body || ""),
-      title: post.title ? stripMarkdown(post.title) : undefined,
+      content: stripMarkdown(postBody),
+      title: postTitle ? stripMarkdown(postTitle) : undefined,
       mediaItems: mediaItems.length > 0 ? mediaItems : undefined,
       mediaUrls: uploadedMediaUrls.length > 0 ? uploadedMediaUrls : undefined,
-      postType: post.postType as any,
+      postType: postType as any,
       queuedFromProfile: zernioApiProfileId,
       platformSpecificData:
         Object.keys(platformSpecificData).length > 0 ? platformSpecificData : undefined,
