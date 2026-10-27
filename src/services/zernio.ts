@@ -805,6 +805,9 @@ export async function publishPostToZernio(
     if (specificData.madeForKids === undefined) {
       specificData.madeForKids = false;
     }
+    if (specificData.categoryId === undefined) {
+      specificData.categoryId = "28"; // Science & Technology
+    }
     platformEntry.platformSpecificData = specificData;
   } else if (zernioPlatform === "linkedin") {
     if (payload.postType === "document" || mediaItems.some((m) => m.type === "document")) {
@@ -821,6 +824,10 @@ export async function publishPostToZernio(
     platforms: [platformEntry],
     content: payload.content,
   };
+
+  if (specificData.tags && Array.isArray(specificData.tags)) {
+    body.tags = specificData.tags;
+  }
 
   if (payload.queuedFromProfile) {
     body.queuedFromProfile = payload.queuedFromProfile;

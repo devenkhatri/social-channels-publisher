@@ -99,12 +99,17 @@ Each subfolder inside your OneDrive parent folder represents a complete social m
 
 ```
 📁 20261026-0823/                          ← Unpublished (no "-Done" suffix)
-├── 📄 caption.md                         ← First heading = Title; Body = YouTube, Instagram, Facebook text
-├── 📄 linkedin-post.md                   ← First heading = Title; Body = LinkedIn post text
-├── 📄 skool-post.md                      ← First heading = Title; Body = Skool post text
+├── 📄 linkedin-post.md                   ← Title + Body for LinkedIn personal & page
+├── 📄 facebook-post.md                   ← Conversational Facebook post text
+├── 📄 youtube.md                         ← Title options + SEO video description & tags
+├── 📄 instagram-post.md                  ← Instagram caption + hashtags
+├── 📄 twitter-post.md                    ← Single tweet (<280) + full thread variant
+├── 📄 skool-post.md                      ← Title + Body for Skool community
+├── 📄 caption.md                         ← Fallback caption for legacy folders
 ├── 📄 cover-prompt.md                    ← Prompt reference metadata
 ├── 🖼️ cover.svg                          ← Cover artwork & dashboard thumbnail
 ├── 🎬 code-moats-hyperframes.mp4         ← YouTube video / Instagram Reel / Facebook Reel
+├── 🎬 code-moats.mp4                     ← Standard video export
 ├── 📑 code-moats.pdf                     ← LinkedIn native document carousel
 └── 📁 slides/                            ← Individual slide vectors
     ├── 🖼️ code-moats-slide-1.svg
@@ -116,11 +121,13 @@ Each subfolder inside your OneDrive parent folder represents a complete social m
 
 | Channel | Text Source | Primary Asset | Post Format |
 |---|---|---|---|
-| **LinkedIn** | `linkedin-post.md` | `*.pdf` | Document Carousel |
-| **YouTube** | `caption.md` | `*-hyperframes.mp4` | Video Upload |
-| **Instagram** | `caption.md` | `slides/*.svg` (rasterized to PNG) **OR** `*.mp4` | Multi-image Carousel **OR** Reel |
-| **Facebook** | `caption.md` | `slides/*.svg` (rasterized to PNG) **OR** `*.mp4` | Multi-image Carousel **OR** Reel |
-| **Skool** | `skool-post.md` | `cover.svg` | Manual Copy-Paste |
+| **LinkedIn** | `linkedin-post.md` (or `caption.md`) | `*.pdf` | Document Carousel |
+| **LinkedIn Page**| `linkedin-post.md` (mirrors LinkedIn) | `*.pdf` | Document Carousel |
+| **YouTube** | `youtube.md` (or `caption.md`) | `*-hyperframes.mp4` / `*.mp4` | Video Upload |
+| **Instagram** | `instagram-post.md` (or `caption.md`) | `slides/*.svg` (rasterized to PNG) **OR** `*.mp4` | Multi-image Carousel **OR** Reel |
+| **Facebook** | `facebook-post.md` (or `caption.md`) | `slides/*.svg` (rasterized to PNG) **OR** `*.mp4` | Multi-image Carousel **OR** Reel |
+| **Threads / X** | `twitter-post.md` (or `caption.md`) | `*-hyperframes.mp4` **OR** `slides/*.svg` **OR** `cover.svg` | Video / Carousel / Feed |
+| **Skool** | `skool-post.md` (or `caption.md`) | `cover.svg` | Manual Copy-Paste |
 
 ---
 

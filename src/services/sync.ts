@@ -8,6 +8,12 @@ import {
 } from "./onedrive";
 import {
   extractTitleAndBody,
+  extractYouTubeContent,
+  extractFacebookContent,
+  extractInstagramContent,
+  extractTwitterContent,
+  extractLinkedInContent,
+  extractSkoolContent,
   sortSlidesNaturally,
   parseFolderStatus,
   shouldSkipFolder,
@@ -90,16 +96,34 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
       continue;
     }
 
-
-    // Categorize files
-    const captionFile = children.find((c) => !c.isFolder && /^caption\.md$/i.test(c.name));
-    const linkedinFile = children.find((c) => !c.isFolder && /^linkedin(-post)?\.md$/i.test(c.name));
-    const threadsFile = children.find(
-      (c) => !c.isFolder && /^(threads|thread|twitter|tweet|x)(-post)?\.md$/i.test(c.name)
+    // Categorize files: separate markdown file per channel with caption.md fallback
+    const facebookFile = children.find(
+      (c) => !c.isFolder && /^(facebook|fb)(-post)?\.md$/i.test(c.name)
     );
-    const skoolFile = children.find((c) => !c.isFolder && /^skool(-post)?\.md$/i.test(c.name));
-    const coverFile = children.find((c) => !c.isFolder && /^cover\.(svg|png|jpg|webp)$/i.test(c.name));
-    const hyperframesVideo = children.find((c) => !c.isFolder && /-hyperframes\.mp4$/i.test(c.name));
+    const youtubeFile = children.find(
+      (c) => !c.isFolder && /^(youtube|yt)(-post)?\.md$/i.test(c.name)
+    );
+    const instagramFile = children.find(
+      (c) => !c.isFolder && /^(instagram|ig)(-post)?\.md$/i.test(c.name)
+    );
+    const twitterFile = children.find(
+      (c) => !c.isFolder && /^(twitter|tweet|threads|thread|x)(-post)?\.md$/i.test(c.name)
+    );
+    const linkedinFile = children.find(
+      (c) => !c.isFolder && /^linkedin(-post)?\.md$/i.test(c.name)
+    );
+    const skoolFile = children.find(
+      (c) => !c.isFolder && /^skool(-post)?\.md$/i.test(c.name)
+    );
+    const captionFile = children.find(
+      (c) => !c.isFolder && /^caption\.md$/i.test(c.name)
+    );
+    const coverFile = children.find(
+      (c) => !c.isFolder && /^cover\.(svg|png|jpg|webp)$/i.test(c.name)
+    );
+    const hyperframesVideo = children.find(
+      (c) => !c.isFolder && /-hyperframes\.mp4$/i.test(c.name)
+    );
     const regularVideo = children.find(
       (c) => !c.isFolder && /\.mp4$/i.test(c.name) && !/-hyperframes\.mp4$/i.test(c.name)
     );
@@ -120,18 +144,45 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
       }
     }
 
-    // Read markdown files
-    let captionText = "";
+    // Read channel markdown files
+    let facebookText = "";
+    let youtubeText = "";
+    let instagramText = "";
+    let twitterText = "";
     let linkedinText = "";
-    let threadsText = "";
     let skoolText = "";
+    let captionText = "";
 
     try {
-      if (captionFile) {
-        captionText = await getFileContentAsText(captionFile.id, captionFile.downloadUrl);
+      if (facebookFile) {
+        facebookText = await getFileContentAsText(facebookFile.id, facebookFile.downloadUrl);
       }
     } catch (err) {
-      console.warn(`Could not read caption.md for ${folder.name}:`, err);
+      console.warn(`Could not read facebook post for ${folder.name}:`, err);
+    }
+
+    try {
+      if (youtubeFile) {
+        youtubeText = await getFileContentAsText(youtubeFile.id, youtubeFile.downloadUrl);
+      }
+    } catch (err) {
+      console.warn(`Could not read youtube post for ${folder.name}:`, err);
+    }
+
+    try {
+      if (instagramFile) {
+        instagramText = await getFileContentAsText(instagramFile.id, instagramFile.downloadUrl);
+      }
+    } catch (err) {
+      console.warn(`Could not read instagram post for ${folder.name}:`, err);
+    }
+
+    try {
+      if (twitterFile) {
+        twitterText = await getFileContentAsText(twitterFile.id, twitterFile.downloadUrl);
+      }
+    } catch (err) {
+      console.warn(`Could not read twitter/threads post for ${folder.name}:`, err);
     }
 
     try {
@@ -143,14 +194,6 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
     }
 
     try {
-      if (threadsFile) {
-        threadsText = await getFileContentAsText(threadsFile.id, threadsFile.downloadUrl);
-      }
-    } catch (err) {
-      console.warn(`Could not read threads post for ${folder.name}:`, err);
-    }
-
-    try {
       if (skoolFile) {
         skoolText = await getFileContentAsText(skoolFile.id, skoolFile.downloadUrl);
       }
@@ -158,15 +201,28 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
       console.warn(`Could not read skool-post.md for ${folder.name}:`, err);
     }
 
-    const captionExtract = extractTitleAndBody(captionText);
-    const linkedinExtract = extractTitleAndBody(linkedinText);
-    const threadsExtract = extractTitleAndBody(threadsText);
-    const skoolExtract = extractTitleAndBody(skoolText);
+    try {
+      if (captionFile) {
+        captionText = await getFileContentAsText(captionFile.id, captionFile.downloadUrl);
+      }
+    } catch (err) {
+      console.warn(`Could not read caption.md for ${folder.name}:`, err);
+    }
 
-    // Primary title
+    // Channel-specific extracted content with caption.md fallback
+    const captionExtract = extractTitleAndBody(captionText);
+    const facebookExtract = extractFacebookContent(facebookText, captionText);
+    const youtubeExtract = extractYouTubeContent(youtubeText, captionText);
+    const instagramExtract = extractInstagramContent(instagramText, captionText);
+    const twitterExtract = extractTwitterContent(twitterText, captionText);
+    const linkedinExtract = extractLinkedInContent(linkedinText, captionText);
+    const skoolExtract = extractSkoolContent(skoolText, captionText);
+
+    // Primary title for the content item
     const primaryTitle =
-      captionExtract.title ||
+      youtubeExtract.title ||
       linkedinExtract.title ||
+      captionExtract.title ||
       skoolExtract.title ||
       originalName;
 
@@ -182,6 +238,12 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
       const wasDone = existing[0].isDone === 1;
       const isNowDone = isDone;
 
+      // Update title if primaryTitle has a good extracted title
+      const newTitle =
+        primaryTitle && primaryTitle !== originalName
+          ? primaryTitle
+          : existing[0].title || primaryTitle;
+
       await db
         .update(schema.contentItems)
         .set({
@@ -189,7 +251,7 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
           originalFolderName: originalName,
           folderPath: folder.webUrl || folder.name,
           isDone: isNowDone ? 1 : 0,
-          title: existing[0].title || primaryTitle,
+          title: newTitle,
           coverImage: coverImage || existing[0].coverImage,
           slideCount: sortedSlides.length,
           syncedAt: nowIso,
@@ -234,126 +296,107 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
         .select()
         .from(schema.channelPosts)
         .where(
-            and(
+          and(
             eq(schema.channelPosts.contentItemId, contentItemId),
             eq(schema.channelPosts.channel, channel)
           )
         );
 
-      if (existingPosts.length === 0) {
-        // Build initial draft for this channel
-        let postTitle: string | null = null;
-        let postBody: string | null = null;
-        let mediaType: string | null = null;
-        let postType: string | null = "feed";
+      // Compute initial draft content for this channel
+      let postTitle: string | null = null;
+      let postBody: string | null = null;
+      let mediaType: string | null = null;
+      let postType: string | null = "feed";
 
-        if (channel === "linkedin") {
-          postTitle = linkedinExtract.title || captionExtract.title || primaryTitle;
-          postBody = linkedinExtract.body || captionExtract.body || "";
-          if (pdfFile) {
-            mediaType = "pdf";
-            postType = "document";
-          } else if (hyperframesVideo || regularVideo) {
-            mediaType = "video";
-            postType = "video";
-          } else if (sortedSlides.length > 0) {
-            mediaType = "carousel";
-            postType = "carousel";
-          }
-        } else if (channel === "linkedin_page") {
-          // LinkedIn Business Page should use the same content as LinkedIn Personal
-          const liPost = await db
-            .select()
-            .from(schema.channelPosts)
-            .where(
-              and(
-                eq(schema.channelPosts.contentItemId, contentItemId),
-                eq(schema.channelPosts.channel, "linkedin")
-              )
-            );
-          if (liPost.length > 0) {
-            postTitle = liPost[0].title;
-            postBody = liPost[0].body;
-            mediaType = liPost[0].mediaType;
-            postType = liPost[0].postType;
-          } else {
-            postTitle = linkedinExtract.title || captionExtract.title || primaryTitle;
-            postBody = linkedinExtract.body || captionExtract.body || "";
-            if (pdfFile) {
-              mediaType = "pdf";
-              postType = "document";
-            } else if (hyperframesVideo || regularVideo) {
-              mediaType = "video";
-              postType = "video";
-            } else if (sortedSlides.length > 0) {
-              mediaType = "carousel";
-              postType = "carousel";
-            }
-          }
-        } else if (channel === "threads") {
-          postTitle = null;
-          postBody =
-            threadsExtract.body ||
-            threadsExtract.title ||
-            captionExtract.body ||
-            captionExtract.title ||
-            "";
-          if (hyperframesVideo || regularVideo) {
-            mediaType = "video";
-            postType = "video";
-          } else if (sortedSlides.length > 0) {
-            mediaType = "carousel";
-            postType = "carousel";
-          } else if (coverFile) {
-            mediaType = "cover";
-            postType = "feed";
-          } else {
-            mediaType = null;
-            postType = "feed";
-          }
-        } else if (channel === "youtube") {
-          postTitle = captionExtract.title || primaryTitle;
-          postBody = captionExtract.body || "";
-          if (hyperframesVideo) {
-            mediaType = "video_reel";
-            postType = "reel";
-          } else if (regularVideo) {
-            mediaType = "video";
-            postType = "video";
-          }
-        } else if (channel === "instagram") {
-          postTitle = null;
-          postBody = captionExtract.body || captionExtract.title || "";
-          if (hyperframesVideo) {
-            mediaType = "video_reel";
-            postType = "reel";
-          } else if (sortedSlides.length > 0) {
-            mediaType = "carousel";
-            postType = "carousel";
-          } else if (regularVideo) {
-            mediaType = "video";
-            postType = "feed";
-          }
-        } else if (channel === "facebook") {
-          postTitle = null;
-          postBody = captionExtract.body || captionExtract.title || "";
-          if (hyperframesVideo) {
-            mediaType = "video_reel";
-            postType = "reel";
-          } else if (sortedSlides.length > 0) {
-            mediaType = "carousel";
-            postType = "carousel";
-          } else if (regularVideo) {
-            mediaType = "video";
-            postType = "feed";
-          }
-        } else if (channel === "skool") {
-          postTitle = skoolExtract.title || captionExtract.title || primaryTitle;
-          postBody = skoolExtract.body || captionExtract.body || "";
+      if (channel === "linkedin") {
+        postTitle = linkedinExtract.title || captionExtract.title || primaryTitle;
+        postBody = linkedinExtract.body || captionExtract.body || "";
+        if (pdfFile) {
+          mediaType = "pdf";
+          postType = "document";
+        } else if (hyperframesVideo || regularVideo) {
+          mediaType = "video";
+          postType = "video";
+        } else if (sortedSlides.length > 0) {
+          mediaType = "carousel";
+          postType = "carousel";
+        }
+      } else if (channel === "linkedin_page") {
+        // LinkedIn Business Page mirrors LinkedIn Personal
+        postTitle = linkedinExtract.title || captionExtract.title || primaryTitle;
+        postBody = linkedinExtract.body || captionExtract.body || "";
+        if (pdfFile) {
+          mediaType = "pdf";
+          postType = "document";
+        } else if (hyperframesVideo || regularVideo) {
+          mediaType = "video";
+          postType = "video";
+        } else if (sortedSlides.length > 0) {
+          mediaType = "carousel";
+          postType = "carousel";
+        }
+      } else if (channel === "threads") {
+        postTitle = null;
+        // Zernio supports multithreaded sequences on Threads via platformSpecificData.threadItems!
+        // Use multithreaded variant if available; otherwise fallback to single tweet variant or caption.
+        postBody = twitterExtract.threadVariant || twitterExtract.singleTweetVariant || captionExtract.body || "";
+        if (hyperframesVideo || regularVideo) {
+          mediaType = "video";
+          postType = "video";
+        } else if (sortedSlides.length > 0) {
+          mediaType = "carousel";
+          postType = "carousel";
+        } else if (coverFile) {
+          mediaType = "cover";
+          postType = "feed";
+        } else {
           mediaType = null;
           postType = "feed";
         }
+      } else if (channel === "youtube") {
+        postTitle = youtubeExtract.title || captionExtract.title || primaryTitle;
+        postBody = youtubeExtract.body || captionExtract.body || "";
+        if (hyperframesVideo) {
+          mediaType = "video_reel";
+          postType = "reel";
+        } else if (regularVideo) {
+          mediaType = "video";
+          postType = "video";
+        }
+      } else if (channel === "instagram") {
+        postTitle = null;
+        postBody = instagramExtract.body || captionExtract.body || "";
+        if (hyperframesVideo) {
+          mediaType = "video_reel";
+          postType = "reel";
+        } else if (sortedSlides.length > 0) {
+          mediaType = "carousel";
+          postType = "carousel";
+        } else if (regularVideo) {
+          mediaType = "video";
+          postType = "feed";
+        }
+      } else if (channel === "facebook") {
+        postTitle = null;
+        postBody = facebookExtract.body || captionExtract.body || "";
+        if (hyperframesVideo) {
+          mediaType = "video_reel";
+          postType = "reel";
+        } else if (sortedSlides.length > 0) {
+          mediaType = "carousel";
+          postType = "carousel";
+        } else if (regularVideo) {
+          mediaType = "video";
+          postType = "feed";
+        }
+      } else if (channel === "skool") {
+        postTitle = skoolExtract.title || captionExtract.title || primaryTitle;
+        postBody = skoolExtract.body || captionExtract.body || "";
+        mediaType = null;
+        postType = "feed";
+      }
 
+      if (existingPosts.length === 0) {
         await db.insert(schema.channelPosts).values({
           id: crypto.randomUUID(),
           contentItemId,
@@ -377,29 +420,52 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
               updatedAt: nowIso,
             })
             .where(eq(schema.channelPosts.id, post.id));
-        } else if (channel === "linkedin_page" && post.status === "draft") {
-          // Keep LinkedIn Business Page content in sync with LinkedIn Personal
-          const liPost = await db
-            .select()
-            .from(schema.channelPosts)
-            .where(
-              and(
-                eq(schema.channelPosts.contentItemId, contentItemId),
-                eq(schema.channelPosts.channel, "linkedin")
-              )
-            );
-          if (
-            liPost.length > 0 &&
-            liPost[0].body &&
-            (liPost[0].body !== post.body || liPost[0].title !== post.title || liPost[0].postType !== post.postType)
-          ) {
+        } else if (post.status === "draft") {
+          // If post is still in draft:
+          // Check if we have newly available dedicated content or updated text
+          const hasDedicatedFile =
+            (channel === "facebook" && Boolean(facebookFile)) ||
+            (channel === "youtube" && Boolean(youtubeFile)) ||
+            (channel === "instagram" && Boolean(instagramFile)) ||
+            (channel === "threads" && Boolean(twitterFile)) ||
+            (channel === "linkedin" && Boolean(linkedinFile)) ||
+            (channel === "skool" && Boolean(skoolFile));
+
+          const contentChanged =
+            (postTitle !== null && postTitle !== post.title) ||
+            (Boolean(postBody) && postBody !== post.body);
+
+          if (hasDedicatedFile || contentChanged || channel === "linkedin_page") {
+            let updateTitle = postTitle;
+            let updateBody = postBody;
+            let updateMediaType: string | null = post.mediaType || mediaType;
+            let updatePostType: string | null = post.postType || postType;
+
+            if (channel === "linkedin_page") {
+              const liPost = await db
+                .select()
+                .from(schema.channelPosts)
+                .where(
+                  and(
+                    eq(schema.channelPosts.contentItemId, contentItemId),
+                    eq(schema.channelPosts.channel, "linkedin")
+                  )
+                );
+              if (liPost.length > 0) {
+                updateTitle = liPost[0].title;
+                updateBody = liPost[0].body;
+                updateMediaType = liPost[0].mediaType;
+                updatePostType = liPost[0].postType;
+              }
+            }
+
             await db
               .update(schema.channelPosts)
               .set({
-                title: liPost[0].title,
-                body: liPost[0].body,
-                postType: liPost[0].postType,
-                mediaType: liPost[0].mediaType,
+                title: updateTitle,
+                body: updateBody,
+                mediaType: updateMediaType,
+                postType: updatePostType,
                 updatedAt: nowIso,
               })
               .where(eq(schema.channelPosts.id, post.id));

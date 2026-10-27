@@ -118,9 +118,13 @@ Body: {
 ```
 📁 Selected Parent Folder (on OneDrive)
 ├── 📁 20261026-0823/ (Unpublished — no "-Done" suffix)
-│   ├── 📄 caption.md                 → YouTube description, Instagram caption, Facebook text
-│   ├── 📄 linkedin-post.md           → LinkedIn post text
+│   ├── 📄 linkedin-post.md           → LinkedIn post text (Personal & Page)
+│   ├── 📄 facebook-post.md           → Facebook conversational post text
+│   ├── 📄 youtube.md                 → YouTube title options & SEO description
+│   ├── 📄 instagram-post.md          → Instagram caption & hashtags
+│   ├── 📄 twitter-post.md            → Twitter/Threads single tweet & thread
 │   ├── 📄 skool-post.md              → Skool post text (manual copy-paste)
+│   ├── 📄 caption.md                 → Fallback caption for legacy folders
 │   ├── 📄 cover-prompt.md            → Cover prompt metadata (viewable in app)
 │   ├── 🖼️ cover.svg                  → Main cover visual / post thumbnail
 │   ├── 🎬 code-moats-hyperframes.mp4 → YouTube video + Instagram Reel + Facebook Reel
@@ -150,9 +154,13 @@ Body: {
 
 | Source File / Folder | Extraction / Handling | Used For |
 |---|---|---|
-| `caption.md` | First `# Heading` → **Title**; remaining body → **Description** | YouTube (title + description), Instagram (caption), Facebook (post text) |
-| `linkedin-post.md` | First `# Heading` → **Title**; remaining body → **Description** | LinkedIn post text |
+| `youtube.md` | Extract first option from `TITLE OPTIONS` → **Title** (interactive chip selector for alternative options); body under `VIDEO DESCRIPTION` (with timestamps, chapters, and links) → **Description**; comma-separated tags under `TAGS` → **YouTube SEO Tags & hashtags** (`platformSpecificData.tags`, category `28`) | YouTube (video title, description, tags, category) |
+| `facebook-post.md` | Whole clean text → **Post Body** (no title) | Facebook (feed or reel post text) |
+| `instagram-post.md` | Whole clean text with emojis & hashtags → **Caption** (no title) | Instagram (carousel or reel caption) |
+| `twitter-post.md` | `FULL THREAD VARIANT` (multithreaded sequence via Zernio `threadItems` on Threads) or `SINGLE TWEET VARIANT` (<280 chars) | Threads / Twitter / X |
+| `linkedin-post.md` | First `# Heading` → **Title**; remaining body → **Description** | LinkedIn personal & business page |
 | `skool-post.md` | First `# Heading` → **Title**; remaining body → **Description** | Skool (manual copy-paste with one-click copy) |
+| `caption.md` | First `# Heading` → **Title**; remaining body → **Description** | Graceful fallback when channel-specific file is absent |
 | `cover-prompt.md` | Raw text | Informational modal / prompt reference in editor |
 | `cover.svg` | SVG vector image | Dashboard card thumbnail & preview cover |
 | `*-hyperframes.mp4` | Video file (`code-moats-hyperframes.mp4`) | YouTube (video upload), Instagram (Reel/Video), Facebook (Reel/Video) |
@@ -172,11 +180,13 @@ Body: {
 
 | Channel | Text Source | Media Asset | Post Type |
 |---|---|---|---|
-| **YouTube** | `caption.md` (Title → video title, body → description) | `*-hyperframes.mp4` | Video upload |
-| **LinkedIn** | `linkedin-post.md` | `*.pdf` (uploaded directly as document) | Document / PDF carousel post |
-| **Instagram** | `caption.md` (body → caption) | `*-hyperframes.mp4` **OR** `slides/*.svg` (rasterized to PNG carousel) | User choice: Reel vs Multipage Carousel |
-| **Facebook** | `caption.md` (body → post text) | `*-hyperframes.mp4` **OR** `slides/*.svg` (rasterized to PNG carousel) | User choice: Reel vs Multipage Carousel |
-| **Skool** | `skool-post.md` (Title & body) | None (or cover image) | Manual copy-paste with clipboard button |
+| **LinkedIn** | `linkedin-post.md` (or `caption.md`) | `*.pdf` (uploaded directly as document) | Document / PDF carousel post |
+| **LinkedIn Page** | `linkedin-post.md` (mirrors LinkedIn Personal) | `*.pdf` (uploaded directly as document) | Document / PDF carousel post |
+| **YouTube** | `youtube.md` (or `caption.md`) | `*-hyperframes.mp4` / `*.mp4` | Video upload |
+| **Instagram** | `instagram-post.md` (or `caption.md`) | `slides/*.svg` (rasterized to PNG carousel) **OR** `*-hyperframes.mp4` | User choice: Reel vs Multipage Carousel |
+| **Facebook** | `facebook-post.md` (or `caption.md`) | `slides/*.svg` (rasterized to PNG carousel) **OR** `*-hyperframes.mp4` | User choice: Reel vs Multipage Carousel |
+| **Threads / X** | `twitter-post.md` (or `caption.md`) | `*-hyperframes.mp4` **OR** `slides/*.svg` **OR** `cover.svg` | Video / Carousel / Feed |
+| **Skool** | `skool-post.md` (or `caption.md`) | None (or cover image) | Manual copy-paste with clipboard button |
 
 ---
 

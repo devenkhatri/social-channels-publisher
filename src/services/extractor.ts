@@ -6,6 +6,11 @@
 export interface ExtractedContent {
   title: string;
   body: string;
+  titleOptions?: string[];
+  singleTweetVariant?: string;
+  threadVariant?: string;
+  threadItems?: string[];
+  tags?: string[];
 }
 
 /**
@@ -153,6 +158,271 @@ export function extractTitleAndBody(markdown: string): ExtractedContent {
     title: stripMarkdown(rawTitle),
     body: stripMarkdown(rawBody),
   };
+}
+
+/**
+ * Extracts YouTube title and video description.
+ * Supports:
+ * 1. Structured content-pipeline format with "TITLE OPTIONS" (1., 2., 3.) and "VIDEO DESCRIPTION"
+ * 2. Standard markdown format (# Title / Body)
+ * 3. Graceful fallback to caption.md if youtube.md is missing or empty
+ */
+export function extractYouTubeContent(
+  youtubeMarkdown?: string | null,
+  fallbackMarkdown?: string | null
+): ExtractedContent {
+  const text = (youtubeMarkdown && youtubeMarkdown.trim()) || "";
+  if (!text) {
+    return extractTitleAndBody(fallbackMarkdown || "");
+  }
+
+  const lines = text.split("\n");
+  const titleOptIdx = lines.findIndex((l) => /^\s*title\s+options/i.test(l));
+  const descIdx = lines.findIndex((l) => /^\s*video\s+description/i.test(l));
+  const tagsIdx = lines.findIndex((l) => /^\s*tags(?:\s*:|$)/i.test(l));
+
+  const titleOptions: string[] = [];
+
+  if (titleOptIdx !== -1) {
+    const endTitleIdx = descIdx !== -1 ? descIdx : lines.length;
+    for (let i = titleOptIdx + 1; i < endTitleIdx; i++) {
+      const line = lines[i].trim();
+      const match = line.match(/^(?:\d+[\.\)]|[-•*]|option\s*\d+:?)\s*(.+)$/i);
+      if (match && match[1].trim()) {
+        const cleanOption = stripMarkdown(match[1].trim());
+        if (cleanOption) {
+          titleOptions.push(cleanOption);
+        }
+      }
+    }
+  }
+
+  // Parse TAGS if present
+  let tags: string[] = [];
+  if (tagsIdx !== -1) {
+    const rawTags = lines.slice(tagsIdx + 1).join(" ").trim();
+    tags = rawTags
+      .split(/[,;\n]+/)
+      .map((t) => stripMarkdown(t).replace(/^#/, "").trim())
+      .filter(Boolean);
+  }
+
+  let rawTitle = titleOptions[0] || "";
+  let rawBody = "";
+
+  if (descIdx !== -1) {
+    const endDescIdx = tagsIdx !== -1 ? tagsIdx : lines.length;
+    rawBody = lines.slice(descIdx + 1, endDescIdx).join("\n").trim();
+  } else {
+    // Standard markdown without TITLE OPTIONS / VIDEO DESCRIPTION sections
+    const standard = extractTitleAndBody(text);
+    if (!rawTitle) {
+      rawTitle = standard.title;
+    }
+    rawBody = standard.body;
+  }
+
+  // If title was still not found, check fallback
+  if (!rawTitle && fallbackMarkdown) {
+    const fb = extractTitleAndBody(fallbackMarkdown);
+    rawTitle = fb.title;
+  }
+
+  let cleanBody = stripMarkdown(rawBody);
+
+  // Append top 3-5 tags as YouTube hashtag chips if not already in the description
+  if (tags.length > 0 && !cleanBody.includes("#")) {
+    const hashtags = tags
+      .slice(0, 5)
+      .map((t) => `#${t.replace(/[^a-zA-Z0-9]/g, "")}`)
+      .filter((t) => t.length > 1)
+      .join(" ");
+    if (hashtags) {
+      cleanBody = `${cleanBody}\n\n${hashtags}`;
+    }
+  }
+
+  return {
+    title: stripMarkdown(rawTitle),
+    body: cleanBody,
+    titleOptions: titleOptions.length > 0 ? titleOptions : undefined,
+    tags: tags.length > 0 ? tags : undefined,
+  };
+}
+
+/**
+ * Extracts Facebook post content.
+ * Facebook posts don't have titles — the entire clean text is the post body.
+ * Falls back to caption text if facebook.md is not provided.
+ */
+export function extractFacebookContent(
+  facebookMarkdown?: string | null,
+  fallbackMarkdown?: string | null
+): ExtractedContent {
+  const text = (facebookMarkdown && facebookMarkdown.trim()) || "";
+  if (text) {
+    return {
+      title: "",
+      body: stripMarkdown(text),
+    };
+  }
+
+  const fallback = extractTitleAndBody(fallbackMarkdown || "");
+  return {
+    title: "",
+    body: fallback.body || fallback.title || "",
+  };
+}
+
+/**
+ * Extracts Instagram post content.
+ * Instagram posts don't have titles — the entire clean text is the caption body.
+ * Falls back to caption text if instagram.md is not provided.
+ */
+export function extractInstagramContent(
+  instagramMarkdown?: string | null,
+  fallbackMarkdown?: string | null
+): ExtractedContent {
+  const text = (instagramMarkdown && instagramMarkdown.trim()) || "";
+  if (text) {
+    return {
+      title: "",
+      body: stripMarkdown(text),
+    };
+  }
+
+  const fallback = extractTitleAndBody(fallbackMarkdown || "");
+  return {
+    title: "",
+    body: fallback.body || fallback.title || "",
+  };
+}
+
+/**
+ * Splits a multithread variant text into individual sequential posts.
+ * Recognizes numbered tweet delimiters (e.g., '1/', '2/', '1/7', etc.),
+ * parenthesized numbers, or '---' dividers, while preserving embedded numbered lists.
+ */
+export function parseThreadItems(text: string): string[] {
+  if (!text || !text.trim()) return [];
+  const trimmed = text.trim();
+
+  // 1. If text uses slash numbering (e.g. 1/, 2/ or 1/7, 2/7), split strictly on slash delimiters.
+  // This prevents embedded numbered lists (e.g. '1. Follow', '2. Repost') from accidentally splitting tweets!
+  if (/^\s*1\s*\/\s*\d*/m.test(trimmed) && /^\s*2\s*\/\s*\d*/m.test(trimmed)) {
+    const slashParts = trimmed.split(/(?:^|\n)(?=\s*\d+\s*\/\s*\d*)/);
+    const slashItems = slashParts.map((p) => p.trim()).filter(Boolean);
+    if (slashItems.length > 1) return slashItems;
+  }
+
+  // 2. Check for other tweet delimiters (like [1], (1), 1))
+  const numberedParts = trimmed.split(/(?:^|\n)(?=\s*(?:\(\d+\)|\[\d+\]|\d+\))\s+)/);
+  const numberedItems = numberedParts.map((p) => p.trim()).filter(Boolean);
+  if (numberedItems.length > 1) return numberedItems;
+
+  // 3. Fallback: check for '---' dividers between tweets
+  const dashParts = trimmed.split(/\n\s*[-=_]{3,}\s*\n/);
+  const dashItems = dashParts.map((p) => p.trim()).filter(Boolean);
+  if (dashItems.length > 1) return dashItems;
+
+  return [trimmed];
+}
+
+/**
+ * Extracts Twitter / Threads post content.
+ * Supports:
+ * 1. Structured "SINGLE TWEET VARIANT" and "FULL THREAD VARIANT" sections
+ * 2. Standard clean text
+ * 3. Graceful fallback to caption.md
+ */
+export function extractTwitterContent(
+  twitterMarkdown?: string | null,
+  fallbackMarkdown?: string | null
+): ExtractedContent {
+  const text = (twitterMarkdown && twitterMarkdown.trim()) || "";
+  if (!text) {
+    const fallback = extractTitleAndBody(fallbackMarkdown || "");
+    return {
+      title: "",
+      body: fallback.body || fallback.title || "",
+    };
+  }
+
+  const lines = text.split("\n");
+  const singleIdx = lines.findIndex((l) => /^\s*single\s+tweet\s+variant/i.test(l));
+  const threadIdx = lines.findIndex((l) => /^\s*full\s+thread\s+variant/i.test(l));
+
+  let singleTweetVariant: string | undefined;
+  let threadVariant: string | undefined;
+  let threadItems: string[] | undefined;
+
+  if (singleIdx !== -1) {
+    const endIdx = threadIdx !== -1 ? threadIdx : lines.length;
+    const bodyLines = lines
+      .slice(singleIdx + 1, endIdx)
+      .filter((l) => !/^[ \t]*[-=_]{3,}[ \t]*$/.test(l));
+    const cleanSingle = stripMarkdown(bodyLines.join("\n").trim());
+    if (cleanSingle) {
+      singleTweetVariant = cleanSingle;
+    }
+  }
+
+  if (threadIdx !== -1) {
+    const bodyLines = lines
+      .slice(threadIdx + 1)
+      .filter((l) => !/^[ \t]*[-=_]{3,}[ \t]*$/.test(l));
+    const cleanThread = stripMarkdown(bodyLines.join("\n").trim());
+    if (cleanThread) {
+      threadVariant = cleanThread;
+      const parsed = parseThreadItems(cleanThread);
+      if (parsed.length > 1) {
+        threadItems = parsed;
+      }
+    }
+  }
+
+  // Prioritize threadVariant for multithreaded support; fallback to singleTweetVariant
+  const body = threadVariant || singleTweetVariant || stripMarkdown(text);
+
+  return {
+    title: "",
+    body,
+    singleTweetVariant,
+    threadVariant,
+    threadItems,
+  };
+}
+
+/**
+ * Extracts LinkedIn post content.
+ * Extracts title (hook / heading) and body.
+ * Falls back to caption text if linkedin.md is missing.
+ */
+export function extractLinkedInContent(
+  linkedinMarkdown?: string | null,
+  fallbackMarkdown?: string | null
+): ExtractedContent {
+  const text = (linkedinMarkdown && linkedinMarkdown.trim()) || "";
+  if (text) {
+    return extractTitleAndBody(text);
+  }
+  return extractTitleAndBody(fallbackMarkdown || "");
+}
+
+/**
+ * Extracts Skool post content.
+ * Extracts title (heading or first line) and body.
+ * Falls back to caption text if skool.md is missing.
+ */
+export function extractSkoolContent(
+  skoolMarkdown?: string | null,
+  fallbackMarkdown?: string | null
+): ExtractedContent {
+  const text = (skoolMarkdown && skoolMarkdown.trim()) || "";
+  if (text) {
+    return extractTitleAndBody(text);
+  }
+  return extractTitleAndBody(fallbackMarkdown || "");
 }
 
 export interface SlideItem {

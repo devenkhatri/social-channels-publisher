@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, schema } from "@/db";
 import { eq } from "drizzle-orm";
-import { listFolderChildren, renameFolder } from "@/services/onedrive";
-import { sortSlidesNaturally } from "@/services/extractor";
+import { listFolderChildren, renameFolder, getFileContentAsText } from "@/services/onedrive";
+import { sortSlidesNaturally, extractYouTubeContent, extractTwitterContent } from "@/services/extractor";
 
 export async function GET(
   request: NextRequest,
@@ -69,6 +69,11 @@ export async function GET(
 
     // Try to fetch live OneDrive assets
     let assets: any = {
+      facebookFile: null,
+      youtubeFile: null,
+      instagramFile: null,
+      twitterFile: null,
+      threadsFile: null,
       captionFile: null,
       linkedinFile: null,
       skoolFile: null,
@@ -83,9 +88,14 @@ export async function GET(
     try {
       const children = await listFolderChildren(item.driveItemId);
 
-      assets.captionFile = children.find((c) => !c.isFolder && /^caption\.md$/i.test(c.name)) || null;
+      assets.facebookFile = children.find((c) => !c.isFolder && /^(facebook|fb)(-post)?\.md$/i.test(c.name)) || null;
+      assets.youtubeFile = children.find((c) => !c.isFolder && /^(youtube|yt)(-post)?\.md$/i.test(c.name)) || null;
+      assets.instagramFile = children.find((c) => !c.isFolder && /^(instagram|ig)(-post)?\.md$/i.test(c.name)) || null;
+      assets.twitterFile = children.find((c) => !c.isFolder && /^(twitter|tweet|threads|thread|x)(-post)?\.md$/i.test(c.name)) || null;
+      assets.threadsFile = assets.twitterFile;
       assets.linkedinFile = children.find((c) => !c.isFolder && /^linkedin(-post)?\.md$/i.test(c.name)) || null;
       assets.skoolFile = children.find((c) => !c.isFolder && /^skool(-post)?\.md$/i.test(c.name)) || null;
+      assets.captionFile = children.find((c) => !c.isFolder && /^caption\.md$/i.test(c.name)) || null;
       assets.coverPromptFile = children.find((c) => !c.isFolder && /^cover-prompt\.md$/i.test(c.name)) || null;
       assets.coverFile = children.find((c) => !c.isFolder && /^cover\.(svg|png|jpg|webp)$/i.test(c.name)) || null;
       assets.hyperframesVideo = children.find((c) => !c.isFolder && /-hyperframes\.mp4$/i.test(c.name)) || null;
@@ -99,6 +109,41 @@ export async function GET(
           (f) => !f.isFolder && /\.(svg|png|jpg|jpeg|webp)$/i.test(f.name)
         );
         assets.slides = sortSlidesNaturally(imageSlides);
+      }
+
+      if (assets.youtubeFile) {
+        try {
+          const ytText = await getFileContentAsText(assets.youtubeFile.id, assets.youtubeFile.downloadUrl);
+          const ytExt = extractYouTubeContent(ytText);
+          assets.youtubeData = {
+            titleOptions: ytExt.titleOptions || [],
+            tags: ytExt.tags || [],
+          };
+        } catch (ytErr) {
+          console.warn("Could not extract youtube.md metadata:", ytErr);
+        }
+      }
+
+      if (assets.twitterFile) {
+        try {
+          const twText = await getFileContentAsText(assets.twitterFile.id, assets.twitterFile.downloadUrl);
+          const twExt = extractTwitterContent(twText);
+          const targetThreadsBody = twExt.threadVariant || twExt.singleTweetVariant || twExt.body || "";
+
+          const threadsPost = posts.find((p) => p.channel === "threads");
+          if (threadsPost && threadsPost.status === "draft" && targetThreadsBody && threadsPost.body !== targetThreadsBody) {
+            await db
+              .update(schema.channelPosts)
+              .set({
+                body: targetThreadsBody,
+                updatedAt: new Date().toISOString(),
+              })
+              .where(eq(schema.channelPosts.id, threadsPost.id));
+            threadsPost.body = targetThreadsBody;
+          }
+        } catch (twErr) {
+          console.warn("Could not extract twitter/threads content:", twErr);
+        }
       }
     } catch (graphError) {
       console.warn("Could not fetch live OneDrive assets for item:", graphError);

@@ -14,7 +14,7 @@ import {
   renameFolder,
 } from "./onedrive";
 import { rasterizeSvgToPng } from "./rasterizer";
-import { sortSlidesNaturally, stripMarkdown } from "./extractor";
+import { sortSlidesNaturally, stripMarkdown, parseThreadItems, extractYouTubeContent } from "./extractor";
 import { logActivity } from "./activity";
 
 export interface PublishResult {
@@ -497,6 +497,61 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
         }
         if (liPost[0].postType) {
           postType = liPost[0].postType;
+        }
+      }
+    }
+
+    // For Threads (and Twitter/X), support multithread publishing via Zernio platformSpecificData.threadItems
+    if (post.channel === "threads" || post.channel === "twitter" || post.channel === "x") {
+      const threadItems = parseThreadItems(postBody);
+      if (threadItems.length > 1) {
+        platformSpecificData.threadItems = threadItems.map((item, idx) => {
+          const cleanItem = stripMarkdown(item);
+          if (idx === 0 && mediaItems.length > 0) {
+            return { content: cleanItem, mediaItems };
+          }
+          return { content: cleanItem };
+        });
+      }
+    }
+
+    // For YouTube, extract video title, tags, category, and metadata from youtube.md if available
+    if (post.channel === "youtube") {
+      const cleanTitle = (postTitle || postBody.split("\n")[0] || "Video").trim();
+      platformSpecificData.title = cleanTitle.substring(0, 100);
+      if (platformSpecificData.visibility === undefined) {
+        platformSpecificData.visibility = "public";
+      }
+      if (platformSpecificData.madeForKids === undefined) {
+        platformSpecificData.madeForKids = false;
+      }
+      if (platformSpecificData.categoryId === undefined) {
+        platformSpecificData.categoryId = "28"; // Science & Technology
+      }
+
+      // Check for youtube.md to pull all SEO tags
+      const ytFile = children.find((c) => !c.isFolder && /^(youtube|yt)(-post)?\.md$/i.test(c.name));
+      if (ytFile) {
+        try {
+          const ytText = await getFileContentAsText(ytFile.id, ytFile.downloadUrl);
+          const ytExt = extractYouTubeContent(ytText);
+          if (ytExt.tags && ytExt.tags.length > 0) {
+            // YouTube allows max 500 characters total across tags, and 100 chars per tag
+            const validTags: string[] = [];
+            let totalTagChars = 0;
+            for (const t of ytExt.tags) {
+              const cleanTag = t.substring(0, 100).trim();
+              if (cleanTag && totalTagChars + cleanTag.length + 1 <= 500) {
+                validTags.push(cleanTag);
+                totalTagChars += cleanTag.length + 1;
+              }
+            }
+            if (validTags.length > 0) {
+              platformSpecificData.tags = validTags;
+            }
+          }
+        } catch (err) {
+          console.warn("[Publisher] Could not parse youtube.md tags:", err);
         }
       }
     }

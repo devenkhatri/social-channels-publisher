@@ -29,6 +29,7 @@ import {
   Download,
   Link2,
 } from "lucide-react";
+import { parseThreadItems } from "@/services/extractor";
 
 type ChannelType =
   | "linkedin"
@@ -78,6 +79,11 @@ interface ContentDetailResponse {
     errorMessage: string | null;
   }>;
   assets: {
+    facebookFile?: any;
+    youtubeFile?: any;
+    instagramFile?: any;
+    twitterFile?: any;
+    threadsFile?: any;
     captionFile: any;
     linkedinFile: any;
     skoolFile: any;
@@ -87,6 +93,10 @@ interface ContentDetailResponse {
     videos: any[];
     pdfs: any[];
     slides: SlideItem[];
+    youtubeData?: {
+      titleOptions?: string[];
+      tags?: string[];
+    };
   };
 }
 
@@ -497,6 +507,31 @@ export default function ContentDetailPage({
   const activeVideo = allVideos.find((v) => v.id === selectedVideoId) || allVideos[0];
   const pdfFile = assets.pdfs?.[0] || null;
   const coverFile = assets.coverFile || null;
+
+  const sourceFileBadge = (() => {
+    if (activeChannel === "facebook") {
+      return assets.facebookFile ? assets.facebookFile.name : (assets.captionFile ? "caption.md (fallback)" : null);
+    }
+    if (activeChannel === "youtube") {
+      return assets.youtubeFile ? assets.youtubeFile.name : (assets.captionFile ? "caption.md (fallback)" : null);
+    }
+    if (activeChannel === "instagram") {
+      return assets.instagramFile ? assets.instagramFile.name : (assets.captionFile ? "caption.md (fallback)" : null);
+    }
+    if (activeChannel === "threads") {
+      return assets.twitterFile ? assets.twitterFile.name : (assets.captionFile ? "caption.md (fallback)" : null);
+    }
+    if (activeChannel === "linkedin") {
+      return assets.linkedinFile ? assets.linkedinFile.name : (assets.captionFile ? "caption.md (fallback)" : null);
+    }
+    if (activeChannel === "linkedin_page") {
+      return "Mirrored from LinkedIn";
+    }
+    if (activeChannel === "skool") {
+      return assets.skoolFile ? assets.skoolFile.name : (assets.captionFile ? "caption.md (fallback)" : null);
+    }
+    return null;
+  })();
 
   // Filter profiles & active connections for this channel
   const matchingProfiles: Array<{
@@ -1271,9 +1306,30 @@ export default function ContentDetailPage({
               activeChannel !== "threads" && (
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-medium text-slate-300">
-                    Post Title / Heading
-                  </label>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-medium text-slate-300">
+                      {activeChannel === "youtube" ? "Video Title" : "Post Title / Heading"}
+                    </label>
+                    {activeChannel === "youtube" && (
+                      <span
+                        className={`text-[10px] font-mono ${
+                          currentForm.title.length > 100
+                            ? "text-rose-400 font-semibold"
+                            : currentForm.title.length > 90
+                            ? "text-amber-300"
+                            : "text-slate-500"
+                        }`}
+                      >
+                        {currentForm.title.length}/100
+                      </span>
+                    )}
+                    {activeChannel === "youtube" && sourceFileBadge && (
+                      <span className="px-2 py-0.5 rounded text-[10px] bg-slate-950 text-indigo-400 font-mono border border-indigo-900/40 flex items-center gap-1">
+                        <FileText className="w-2.5 h-2.5" />
+                        {sourceFileBadge}
+                      </span>
+                    )}
+                  </div>
                   {activeChannel === "skool" && (
                     <button
                       onClick={() =>
@@ -1302,6 +1358,35 @@ export default function ContentDetailPage({
                   placeholder="Enter compelling post headline..."
                   className="w-full px-3.5 py-2 text-xs bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                 />
+
+                {/* Alternative YouTube Title Options */}
+                {activeChannel === "youtube" &&
+                  assets.youtubeData?.titleOptions &&
+                  assets.youtubeData.titleOptions.length > 1 && (
+                    <div className="mt-2 space-y-1.5">
+                      <div className="text-[11px] text-slate-400 flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 text-amber-400" />
+                        <span>Alternative Title Options (Click to apply):</span>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        {assets.youtubeData.titleOptions.map((opt, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleFormChange("title", opt)}
+                            className={`text-left text-[11px] px-2.5 py-1.5 rounded-lg border transition-all flex items-start gap-2 ${
+                              currentForm.title === opt
+                                ? "bg-amber-500/15 text-amber-300 border-amber-500/40 font-medium"
+                                : "bg-slate-950/80 text-slate-400 border-slate-800/80 hover:text-slate-200 hover:border-slate-700"
+                            }`}
+                          >
+                            <span className="font-semibold text-slate-500 shrink-0">{idx + 1}.</span>
+                            <span className="truncate">{opt}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
               </div>
             )}
 
@@ -1434,36 +1519,80 @@ export default function ContentDetailPage({
             {/* Body / Description Textarea */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-medium text-slate-300">
-                  {activeChannel === "youtube"
-                    ? "Video Description"
-                    : activeChannel === "threads"
-                    ? "Threads Post Content"
-                    : "Post Content / Caption"}
-                </label>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-medium text-slate-300">
+                    {activeChannel === "youtube"
+                      ? "Video Description"
+                      : activeChannel === "threads"
+                      ? "Threads Post Content"
+                      : "Post Content / Caption"}
+                  </label>
+                  {sourceFileBadge && (
+                    <span className="px-2 py-0.5 rounded text-[10px] bg-slate-950 text-indigo-400 font-mono border border-indigo-900/40 flex items-center gap-1">
+                      <FileText className="w-2.5 h-2.5" />
+                      {sourceFileBadge}
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-3">
                   {activeChannel === "threads" ? (
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`text-[11px] font-mono font-medium ${
-                          currentForm.body.length > 500
-                            ? "text-rose-400 font-semibold"
-                            : currentForm.body.length > 450
-                            ? "text-amber-300"
-                            : "text-slate-400"
-                        }`}
-                      >
-                        {currentForm.body.length}/500 chars
-                      </span>
-                      {currentForm.body.length > 500 && (
-                        <span
-                          className="text-[10px] text-rose-400 cursor-help"
-                          title="Threads post limit is 500 characters."
-                        >
-                          (Exceeds limit)
-                        </span>
-                      )}
-                    </div>
+                    (() => {
+                      const threadParts = parseThreadItems(currentForm.body);
+                      const isThread = threadParts.length > 1;
+                      const anyItemTooLong = isThread
+                        ? threadParts.some((p) => p.length > 500)
+                        : currentForm.body.length > 500;
+
+                      if (isThread) {
+                        return (
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`text-[11px] font-mono font-medium ${
+                                anyItemTooLong ? "text-rose-400 font-semibold" : "text-emerald-400"
+                              }`}
+                            >
+                              🧵 {threadParts.length} Thread Posts
+                            </span>
+                            {anyItemTooLong ? (
+                              <span
+                                className="text-[10px] text-rose-400 cursor-help"
+                                title="At least one post in the thread exceeds 500 characters."
+                              >
+                                (Item &gt; 500 chars)
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                (Max {Math.max(...threadParts.map((p) => p.length))}/500 chars)
+                              </span>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`text-[11px] font-mono font-medium ${
+                              currentForm.body.length > 500
+                                ? "text-rose-400 font-semibold"
+                                : currentForm.body.length > 450
+                                ? "text-amber-300"
+                                : "text-slate-400"
+                            }`}
+                          >
+                            {currentForm.body.length}/500 chars
+                          </span>
+                          {currentForm.body.length > 500 && (
+                            <span
+                              className="text-[10px] text-rose-400 cursor-help"
+                              title="Threads post limit is 500 characters."
+                            >
+                              (Exceeds limit)
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()
                   ) : (
                     <span className="text-[11px] text-slate-500">
                       {currentForm.body.length} characters
@@ -1501,6 +1630,33 @@ export default function ContentDetailPage({
                 }
                 className="w-full px-3.5 py-2.5 text-xs bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 leading-relaxed font-sans resize-y"
               />
+
+              {/* YouTube SEO Tags Display */}
+              {activeChannel === "youtube" &&
+                assets.youtubeData?.tags &&
+                assets.youtubeData.tags.length > 0 && (
+                  <div className="mt-2.5 p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-medium text-slate-300 flex items-center gap-1.5">
+                        <span>🏷️</span>
+                        <span>YouTube SEO Tags ({assets.youtubeData.tags.length})</span>
+                      </span>
+                      <span className="text-[10px] text-emerald-400 font-mono">
+                        Sent with video metadata
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1 max-h-28 overflow-y-auto pr-1">
+                      {assets.youtubeData.tags.map((tag, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-0.5 rounded text-[10px] bg-slate-900 text-slate-300 border border-slate-800 font-sans"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
             </div>
 
             {/* Target Zernio Social Profile (except Skool) */}
