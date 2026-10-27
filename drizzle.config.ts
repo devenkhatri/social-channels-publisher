@@ -1,10 +1,21 @@
-import type { Config } from "drizzle-kit";
+import { defineConfig } from "drizzle-kit";
 
-export default {
+const databaseUrl =
+  process.env.TURSO_DATABASE_URL ||
+  process.env.DATABASE_URL ||
+  "./data/social-publisher.db";
+
+const isTurso =
+  databaseUrl.startsWith("libsql://") ||
+  databaseUrl.startsWith("https://") ||
+  Boolean(process.env.TURSO_AUTH_TOKEN);
+
+export default defineConfig({
   schema: "./src/db/schema.ts",
   out: "./drizzle",
-  dialect: "sqlite",
+  dialect: isTurso ? "turso" : "sqlite",
   dbCredentials: {
-    url: "./data/social-publisher.db",
+    url: databaseUrl,
+    authToken: process.env.TURSO_AUTH_TOKEN,
   },
-} satisfies Config;
+});

@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  serverExternalPackages: ["@resvg/resvg-js", "better-sqlite3"],
+  serverExternalPackages: ["@resvg/resvg-js", "@libsql/client"],
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

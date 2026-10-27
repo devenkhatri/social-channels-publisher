@@ -1,23 +1,47 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import { createClient } from "@libsql/client";
+import { drizzle } from "drizzle-orm/libsql";
 import * as schema from "./schema";
 import path from "path";
 import fs from "fs";
-import { config } from "@/lib/config";
 
-const dbDir = path.join(process.cwd(), "data");
-const dbPath = path.join(dbDir, "social-publisher.db");
+// Determine database URL and auth token
+const databaseUrl =
+  process.env.TURSO_DATABASE_URL ||
+  process.env.DATABASE_URL ||
+  "file:./data/social-publisher.db";
 
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
+const authToken = process.env.TURSO_AUTH_TOKEN || undefined;
+
+const isRemote =
+  databaseUrl.startsWith("libsql://") ||
+  databaseUrl.startsWith("https://") ||
+  databaseUrl.startsWith("http://");
+
+let formattedUrl = databaseUrl;
+
+// If local file, ensure data directory exists and normalize file URI
+if (!isRemote) {
+  const dataDir = path.join(process.cwd(), "data");
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+  const cleanPath = databaseUrl.replace(/^file:/, "");
+  const resolvedPath = path.isAbsolute(cleanPath)
+    ? cleanPath
+    : path.join(dataDir, path.basename(cleanPath) || "social-publisher.db");
+  formattedUrl = `file:${resolvedPath}`;
 }
 
-const sqlite = new Database(dbPath);
-sqlite.pragma("journal_mode = WAL");
-sqlite.pragma("foreign_keys = ON");
+export const client = createClient({
+  url: formattedUrl,
+  authToken: isRemote ? authToken : undefined,
+});
 
-// Initialize tables if they don't already exist
-sqlite.exec(`
+export const db = drizzle(client, { schema });
+export { schema };
+
+// DDL for automatic bootstrap / fallback
+const initSql = `
   CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
@@ -104,18 +128,46 @@ sqlite.exec(`
     expires_at TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
-`);
 
-// Safe migrations for newly added columns in existing SQLite databases
-try {
-  sqlite.exec("ALTER TABLE zernio_profiles ADD COLUMN is_default INTEGER DEFAULT 0;");
-} catch {}
-try {
-  sqlite.exec("ALTER TABLE zernio_profiles ADD COLUMN color TEXT;");
-} catch {}
-try {
-  sqlite.exec("ALTER TABLE channel_posts ADD COLUMN zernio_connection_id TEXT;");
-} catch {}
+  CREATE TABLE IF NOT EXISTS activity_logs (
+    id TEXT PRIMARY KEY,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    content_item_id TEXT,
+    channel TEXT,
+    status TEXT NOT NULL DEFAULT 'info',
+    metadata TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+`;
 
-export const db = drizzle(sqlite, { schema });
-export { schema };
+let isInitialized = false;
+export async function ensureDbInitialized() {
+  if (isInitialized) return;
+  try {
+    await client.executeMultiple(initSql);
+    // Backward-compatible column additions
+    try { await client.execute("ALTER TABLE zernio_profiles ADD COLUMN is_default INTEGER DEFAULT 0;"); } catch {}
+    try { await client.execute("ALTER TABLE zernio_profiles ADD COLUMN color TEXT;"); } catch {}
+    try { await client.execute("ALTER TABLE channel_posts ADD COLUMN zernio_connection_id TEXT;"); } catch {}
+    isInitialized = true;
+  } catch (e) {
+    console.warn("DB bootstrap warning:", e);
+  }
+}
+
+// Automatically trigger initialization asynchronously
+ensureDbInitialized().catch(() => {});
+
+export function checkpointDb() {
+  if (isRemote) {
+    // Turso handles WAL checkpointing automatically in cloud
+    return;
+  }
+  try {
+    client.execute("PRAGMA wal_checkpoint(PASSIVE)").catch(() => {});
+  } catch (e) {
+    console.warn("WAL checkpoint error:", e);
+  }
+}

@@ -1,4 +1,4 @@
-import { db, schema } from "@/db";
+import { db, schema, checkpointDb } from "@/db";
 import { eq } from "drizzle-orm";
 import { encrypt, decrypt } from "@/lib/crypto";
 
@@ -203,6 +203,8 @@ export async function addZernioAccount(
     );
   }
 
+  checkpointDb();
+
   return { id, name: name.trim() };
 }
 
@@ -219,6 +221,7 @@ export async function deleteZernioAccount(id: string): Promise<void> {
   await db
     .delete(schema.zernioAccounts)
     .where(eq(schema.zernioAccounts.id, id));
+  checkpointDb();
 }
 
 /**
@@ -660,6 +663,8 @@ export async function discoverProfiles(accountId: string): Promise<DiscoveryResu
       }
     }
   }
+
+  checkpointDb();
 
   return {
     profilesCount: insertedProfilesCount,
