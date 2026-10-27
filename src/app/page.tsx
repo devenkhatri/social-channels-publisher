@@ -583,19 +583,8 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* View mode toggle (Grid vs Table) */}
+          {/* View mode toggle (Table/List vs Grid) */}
           <div className="flex items-center gap-1 p-1 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60">
-            <button
-              onClick={() => setViewMode("grid")}
-              title="Grid View"
-              className={`p-1.5 rounded-lg transition-all ${
-                viewMode === "grid"
-                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
-                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-              }`}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
             <button
               onClick={() => setViewMode("table")}
               title="Table / List View"
@@ -606,6 +595,17 @@ export default function DashboardPage() {
               }`}
             >
               <List className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("grid")}
+              title="Grid View"
+              className={`p-1.5 rounded-lg transition-all ${
+                viewMode === "grid"
+                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
+                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4" />
             </button>
           </div>
         </div>

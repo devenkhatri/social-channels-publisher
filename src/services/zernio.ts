@@ -901,3 +901,225 @@ export async function publishPostToZernio(
     rawResponse: responseJson,
   };
 }
+
+export interface QueuedPostPlatform {
+  platform: string;
+  status: string;
+  username?: string | null;
+  displayName?: string | null;
+  profilePicture?: string | null;
+  scheduledFor?: string | null;
+  platformSpecificData?: Record<string, any>;
+}
+
+export interface QueuedPostItem {
+  id: string;
+  zernioAccountId: string;
+  zernioAccountName: string;
+  profileId?: string | null;
+  profileName?: string | null;
+  title: string;
+  content: string;
+  scheduledFor: string | null;
+  status: string;
+  queueId?: string | null;
+  mediaItems: Array<{
+    url: string;
+    type: "video" | "image" | "document" | string;
+  }>;
+  platforms: QueuedPostPlatform[];
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface AccountQueueSummary {
+  accountId: string;
+  accountName: string;
+  totalQueued: number;
+  platforms: string[];
+  profiles: Array<{
+    id: string;
+    name: string;
+    queuedCount: number;
+  }>;
+}
+
+export interface ZernioQueuesResponse {
+  accounts: AccountQueueSummary[];
+  posts: QueuedPostItem[];
+  totalQueued: number;
+  nextScheduledAt: string | null;
+}
+
+/**
+ * Fetches all queued / scheduled posts across all configured Zernio accounts
+ */
+export async function getZernioQueues(options?: {
+  accountId?: string;
+  status?: string;
+}): Promise<ZernioQueuesResponse> {
+  const accounts = await db.select().from(schema.zernioAccounts);
+  const profiles = await db.select().from(schema.zernioProfiles);
+
+  const statusFilter = options?.status || "scheduled";
+  const targetAccounts = options?.accountId
+    ? accounts.filter((a) => a.id === options.accountId)
+    : accounts;
+
+  const allPosts: QueuedPostItem[] = [];
+  const accountSummaries: AccountQueueSummary[] = [];
+
+  for (const acc of targetAccounts) {
+    let apiKey = "";
+    try {
+      apiKey = decrypt(acc.apiKey);
+    } catch {
+      continue;
+    }
+
+    try {
+      const url =
+        statusFilter === "all"
+          ? `${ZERNIO_BASE_URL}/posts?limit=100`
+          : `${ZERNIO_BASE_URL}/posts?status=${encodeURIComponent(statusFilter)}&limit=100`;
+
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        console.warn(`[Zernio Queues] Failed to fetch queues for account ${acc.name}: ${res.status}`);
+        accountSummaries.push({
+          accountId: acc.id,
+          accountName: acc.name,
+          totalQueued: 0,
+          platforms: [],
+          profiles: [],
+        });
+        continue;
+      }
+
+      const data = await res.json();
+      const rawPosts = data.posts || [];
+      const accountProfiles = profiles.filter((p) => p.zernioAccountId === acc.id);
+
+      const platformsSet = new Set<string>();
+
+      for (const p of rawPosts) {
+        const matchingProfile = accountProfiles.find(
+          (prof) => prof.profileId === p.queuedFromProfile || prof.id === p.queuedFromProfile
+        );
+
+        const platforms: QueuedPostPlatform[] = (p.platforms || []).map((pl: any) => {
+          const platName = pl.platform || "unknown";
+          platformsSet.add(platName);
+          return {
+            platform: platName,
+            status: pl.status || "pending",
+            username: pl.accountId?.username || null,
+            displayName: pl.accountId?.displayName || null,
+            profilePicture: pl.accountId?.profilePicture || null,
+            scheduledFor: pl.scheduledFor || p.scheduledFor || null,
+            platformSpecificData: pl.platformSpecificData || {},
+          };
+        });
+
+        allPosts.push({
+          id: p._id || p.id,
+          zernioAccountId: acc.id,
+          zernioAccountName: acc.name,
+          profileId: p.queuedFromProfile || null,
+          profileName: matchingProfile?.profileName || null,
+          title: p.title || "",
+          content: p.content || "",
+          scheduledFor: p.scheduledFor || null,
+          status: p.status || statusFilter,
+          queueId: p.queueId || null,
+          mediaItems: (p.mediaItems || []).map((m: any) => ({
+            url: m.url,
+            type: m.type || "image",
+          })),
+          platforms,
+          createdAt: p.createdAt || null,
+          updatedAt: p.updatedAt || null,
+        });
+      }
+
+      accountSummaries.push({
+        accountId: acc.id,
+        accountName: acc.name,
+        totalQueued: rawPosts.length,
+        platforms: Array.from(platformsSet),
+        profiles: accountProfiles.map((prof) => ({
+          id: prof.id,
+          name: prof.profileName || prof.platform,
+          queuedCount: rawPosts.filter((p: any) => p.queuedFromProfile === prof.profileId).length,
+        })),
+      });
+    } catch (err: any) {
+      console.error(`[Zernio Queues] Error querying account ${acc.name}:`, err);
+      accountSummaries.push({
+        accountId: acc.id,
+        accountName: acc.name,
+        totalQueued: 0,
+        platforms: [],
+        profiles: [],
+      });
+    }
+  }
+
+  // Sort chronologically ascending by scheduledFor (soonest scheduled first)
+  allPosts.sort((a, b) => {
+    if (!a.scheduledFor) return 1;
+    if (!b.scheduledFor) return -1;
+    return new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime();
+  });
+
+  const nextScheduledAt =
+    allPosts.find((p) => p.scheduledFor && new Date(p.scheduledFor).getTime() > Date.now())
+      ?.scheduledFor ||
+    allPosts[0]?.scheduledFor ||
+    null;
+
+  return {
+    accounts: accountSummaries,
+    posts: allPosts,
+    totalQueued: allPosts.length,
+    nextScheduledAt,
+  };
+}
+
+/**
+ * Deletes / cancels a queued post from Zernio
+ */
+export async function deleteZernioQueuedPost(
+  postId: string,
+  accountId: string
+): Promise<boolean> {
+  const accounts = await db
+    .select()
+    .from(schema.zernioAccounts)
+    .where(eq(schema.zernioAccounts.id, accountId));
+
+  if (accounts.length === 0) throw new Error("Zernio account not found");
+  const apiKey = decrypt(accounts[0].apiKey);
+
+  const res = await fetch(`${ZERNIO_BASE_URL}/posts/${postId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+  });
+
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(
+      errorJson.message || `Failed to delete queued post from Zernio: ${res.statusText}`
+    );
+  }
+
+  return true;
+}

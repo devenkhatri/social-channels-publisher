@@ -8,6 +8,7 @@ import {
   Cloud,
   KeyRound,
   Activity,
+  CalendarClock,
   LogOut,
   Share2,
   ExternalLink,
@@ -26,6 +27,11 @@ const NAV_ITEMS = [
     name: "Content Library",
     href: "/content",
     icon: FolderSync,
+  },
+  {
+    name: "Queues",
+    href: "/queues",
+    icon: CalendarClock,
   },
   {
     name: "Activity Log",
