@@ -65,12 +65,34 @@ export async function getZernioAccounts(): Promise<ZernioAccountView[]> {
     const accountProfiles = profiles.filter((p) => p.zernioAccountId === acc.id);
     const accountConnections = connections.filter((c) => c.zernioAccountId === acc.id);
 
+    const accNameLower = (acc.name || "").toLowerCase();
+    const isBizAccount =
+      accNameLower.includes("biz") ||
+      accNameLower.includes("page") ||
+      accNameLower.includes("company") ||
+      accNameLower.includes("org");
+
     // Compute unique active channels across the account
     const availableChannels = Array.from(
       new Set(
         accountConnections
           .filter((c) => c.isActive === 1)
-          .map((c) => c.platform.toLowerCase())
+          .flatMap((c) => {
+            const plat = c.platform.toLowerCase();
+            const dispLower = (c.displayName || "").toLowerCase();
+            const isOrgOrPage =
+              plat === "linkedin_page" ||
+              isBizAccount ||
+              Boolean(c.connectionId?.includes("::")) ||
+              dispLower.includes("page") ||
+              dispLower.includes("company") ||
+              dispLower.includes("technolabs");
+
+            if (plat === "linkedin" || plat === "linkedin_page") {
+              return isOrgOrPage ? ["linkedin_page", "linkedin"] : ["linkedin", "linkedin_page"];
+            }
+            return [plat];
+          })
       )
     );
 
@@ -88,7 +110,22 @@ export async function getZernioAccounts(): Promise<ZernioAccountView[]> {
           new Set(
             profileConns
               .filter((c) => c.isActive === 1)
-              .map((c) => c.platform.toLowerCase())
+              .flatMap((c) => {
+                const plat = c.platform.toLowerCase();
+                const dispLower = (c.displayName || "").toLowerCase();
+                const isOrgOrPage =
+                  plat === "linkedin_page" ||
+                  isBizAccount ||
+                  Boolean(c.connectionId?.includes("::")) ||
+                  dispLower.includes("page") ||
+                  dispLower.includes("company") ||
+                  dispLower.includes("technolabs");
+
+                if (plat === "linkedin" || plat === "linkedin_page") {
+                  return isOrgOrPage ? ["linkedin_page", "linkedin"] : ["linkedin", "linkedin_page"];
+                }
+                return [plat];
+              })
           )
         );
 
@@ -100,18 +137,32 @@ export async function getZernioAccounts(): Promise<ZernioAccountView[]> {
           color: p.color,
           connectionsCount: profileConns.length,
           availableChannels: profileChannels,
-          connections: profileConns.map((c) => ({
-            id: c.id,
-            connectionId: c.connectionId,
-            platform: c.platform,
-            username: c.username,
-            displayName: c.displayName,
-            profilePicture: c.profilePicture,
-            profileUrl: c.profileUrl,
-            isActive: Boolean(c.isActive),
-            platformStatus: c.platformStatus,
-            followersCount: c.followersCount,
-          })),
+          connections: profileConns.map((c) => {
+            const rawPlat = c.platform.toLowerCase();
+            const dispLower = (c.displayName || "").toLowerCase();
+            const isConnBiz =
+              rawPlat === "linkedin_page" ||
+              isBizAccount ||
+              Boolean(c.connectionId?.includes("::")) ||
+              dispLower.includes("page") ||
+              dispLower.includes("company") ||
+              dispLower.includes("technolabs");
+            const effectivePlatform =
+              rawPlat === "linkedin" && isConnBiz ? "linkedin_page" : c.platform;
+
+            return {
+              id: c.id,
+              connectionId: c.connectionId,
+              platform: effectivePlatform,
+              username: c.username,
+              displayName: c.displayName,
+              profilePicture: c.profilePicture,
+              profileUrl: c.profileUrl,
+              isActive: Boolean(c.isActive),
+              platformStatus: c.platformStatus,
+              followersCount: c.followersCount,
+            };
+          }),
           // Backward-compat fields
           platform: profileChannels[0] || p.platform || "profile",
           profileName: p.profileName,
@@ -297,6 +348,17 @@ export interface DiscoveryResult {
 export async function discoverProfiles(accountId: string): Promise<DiscoveryResult> {
   const apiKey = await getDecryptedApiKey(accountId);
 
+  const existingAcc = await db
+    .select()
+    .from(schema.zernioAccounts)
+    .where(eq(schema.zernioAccounts.id, accountId));
+  const accountNameLower = (existingAcc[0]?.name || "").toLowerCase();
+  const isBizAccount =
+    accountNameLower.includes("biz") ||
+    accountNameLower.includes("page") ||
+    accountNameLower.includes("company") ||
+    accountNameLower.includes("org");
+
   // Fetch both /profiles and /accounts concurrently
   const [profilesRes, accountsRes] = await Promise.all([
     fetch(`${ZERNIO_BASE_URL}/profiles`, {
@@ -393,12 +455,21 @@ export async function discoverProfiles(accountId: string): Promise<DiscoveryResu
         "unknown"
       ).toLowerCase();
       if (platform === "x") platform = "twitter";
-      if (platform === "linkedin" && acc.metadata?.accountType === "organization") {
+      if (
+        platform === "linkedin" &&
+        (acc.metadata?.accountType === "organization" ||
+          acc.metadata?.isCompany ||
+          acc.type === "company" ||
+          isBizAccount)
+      ) {
         platform = "linkedin_page";
       }
 
       if (acc.isActive !== false) {
         discoveredChannels.add(platform);
+        if (platform === "linkedin_page") {
+          discoveredChannels.add("linkedin");
+        }
       }
 
       const username =
@@ -513,10 +584,21 @@ export async function discoverProfiles(accountId: string): Promise<DiscoveryResu
       const connZernioId = String(acc._id || acc.id || acc.accountId);
       let platform = (acc.platform || "unknown").toLowerCase();
       if (platform === "x") platform = "twitter";
-      if (platform === "linkedin" && acc.metadata?.accountType === "organization") {
+      if (
+        platform === "linkedin" &&
+        (acc.metadata?.accountType === "organization" ||
+          acc.metadata?.isCompany ||
+          acc.type === "company" ||
+          isBizAccount)
+      ) {
         platform = "linkedin_page";
       }
-      if (acc.isActive !== false) discoveredChannels.add(platform);
+      if (acc.isActive !== false) {
+        discoveredChannels.add(platform);
+        if (platform === "linkedin_page") {
+          discoveredChannels.add("linkedin");
+        }
+      }
 
       await db.insert(schema.zernioConnections).values({
         id: crypto.randomUUID(),

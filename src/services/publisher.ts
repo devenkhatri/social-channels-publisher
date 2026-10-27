@@ -83,6 +83,8 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
 
   const allConnections = await db.select().from(schema.zernioConnections);
   const allProfiles = await db.select().from(schema.zernioProfiles);
+  const allAccounts = await db.select().from(schema.zernioAccounts);
+
   const matchingConnections = allConnections.filter((c) => {
     const connPlatform = c.platform.toLowerCase();
     if (post.channel === "linkedin_page") {
@@ -95,10 +97,61 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
       return (connPlatform === "twitter" || connPlatform === "x") && c.isActive === 1;
     }
     if (post.channel === "linkedin") {
-      return connPlatform === "linkedin" && c.isActive === 1;
+      return (connPlatform === "linkedin" || connPlatform === "linkedin_page") && c.isActive === 1;
     }
     return connPlatform === post.channel.toLowerCase() && c.isActive === 1;
   });
+
+  // Prioritize connections according to channel intent
+  if (post.channel === "linkedin_page") {
+    matchingConnections.sort((a, b) => {
+      const aAcc = allAccounts.find((acc) => acc.id === a.zernioAccountId);
+      const bAcc = allAccounts.find((acc) => acc.id === b.zernioAccountId);
+      const aIsBiz =
+        a.platform.toLowerCase() === "linkedin_page" ||
+        a.connectionId.includes("::") ||
+        (aAcc?.name || "").toLowerCase().includes("biz") ||
+        (aAcc?.name || "").toLowerCase().includes("page") ||
+        (aAcc?.name || "").toLowerCase().includes("company") ||
+        (a.displayName || "").toLowerCase().includes("page") ||
+        (a.displayName || "").toLowerCase().includes("technolabs") ||
+        (a.displayName || "").toLowerCase().includes("company");
+      const bIsBiz =
+        b.platform.toLowerCase() === "linkedin_page" ||
+        b.connectionId.includes("::") ||
+        (bAcc?.name || "").toLowerCase().includes("biz") ||
+        (bAcc?.name || "").toLowerCase().includes("page") ||
+        (bAcc?.name || "").toLowerCase().includes("company") ||
+        (b.displayName || "").toLowerCase().includes("page") ||
+        (b.displayName || "").toLowerCase().includes("technolabs") ||
+        (b.displayName || "").toLowerCase().includes("company");
+
+      if (aIsBiz && !bIsBiz) return -1;
+      if (!aIsBiz && bIsBiz) return 1;
+      return 0;
+    });
+  } else if (post.channel === "linkedin") {
+    matchingConnections.sort((a, b) => {
+      const aAcc = allAccounts.find((acc) => acc.id === a.zernioAccountId);
+      const bAcc = allAccounts.find((acc) => acc.id === b.zernioAccountId);
+      const aIsBiz =
+        a.platform.toLowerCase() === "linkedin_page" ||
+        a.connectionId.includes("::") ||
+        (aAcc?.name || "").toLowerCase().includes("biz") ||
+        (aAcc?.name || "").toLowerCase().includes("page") ||
+        (aAcc?.name || "").toLowerCase().includes("company");
+      const bIsBiz =
+        b.platform.toLowerCase() === "linkedin_page" ||
+        b.connectionId.includes("::") ||
+        (bAcc?.name || "").toLowerCase().includes("biz") ||
+        (bAcc?.name || "").toLowerCase().includes("page") ||
+        (bAcc?.name || "").toLowerCase().includes("company");
+
+      if (!aIsBiz && bIsBiz) return -1;
+      if (aIsBiz && !bIsBiz) return 1;
+      return 0;
+    });
+  }
 
   let targetConnection: (typeof schema.zernioConnections.$inferSelect) | undefined;
 
@@ -122,7 +175,7 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
     targetConnection = matchingConnections.find((c) => c.zernioAccountId === zernioAccountId);
   }
 
-  // 1e. Fallback to first active matching connection
+  // 1e. Fallback to first active matching connection (already sorted by channel suitability)
   if (!targetConnection && matchingConnections.length > 0) {
     targetConnection = matchingConnections[0];
   }

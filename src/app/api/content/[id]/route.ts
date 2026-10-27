@@ -22,11 +22,50 @@ export async function GET(
 
     const item = items[0];
 
-    // Fetch channel posts
-    const posts = await db
+    // Fetch channel posts and ensure all supported channels exist
+    const requiredChannels = [
+      "linkedin",
+      "linkedin_page",
+      "threads",
+      "youtube",
+      "instagram",
+      "facebook",
+      "skool",
+    ] as const;
+
+    let posts = await db
       .select()
       .from(schema.channelPosts)
       .where(eq(schema.channelPosts.contentItemId, item.id));
+
+    const existingChannelSet = new Set(posts.map((p) => p.channel));
+    const missingChannels = requiredChannels.filter((c) => !existingChannelSet.has(c));
+
+    if (missingChannels.length > 0) {
+      const liPost = posts.find((p) => p.channel === "linkedin");
+      for (const ch of missingChannels) {
+        const postTitle = liPost?.title || item.title || "";
+        const postBody = liPost?.body || "";
+        const mediaType = liPost?.mediaType || null;
+        const postType = liPost?.postType || "feed";
+
+        await db.insert(schema.channelPosts).values({
+          id: crypto.randomUUID(),
+          contentItemId: item.id,
+          channel: ch,
+          title: postTitle,
+          body: postBody,
+          mediaType,
+          postType,
+          status: "draft",
+        });
+      }
+
+      posts = await db
+        .select()
+        .from(schema.channelPosts)
+        .where(eq(schema.channelPosts.contentItemId, item.id));
+    }
 
     // Try to fetch live OneDrive assets
     let assets: any = {

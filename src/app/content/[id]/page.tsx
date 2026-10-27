@@ -506,21 +506,42 @@ export default function ContentDetailPage({
     accountName: string;
     handle?: string | null;
     avatar?: string | null;
+    isBusinessPage?: boolean;
   }> = [];
 
   (accountsData || []).forEach((acc: any) => {
+    const accNameLower = (acc.name || "").toLowerCase();
+    const isBizAccount =
+      accNameLower.includes("biz") ||
+      accNameLower.includes("page") ||
+      accNameLower.includes("company") ||
+      accNameLower.includes("org");
+
     (acc.profiles || []).forEach((p: any) => {
       // Check connections inside profile
       if (Array.isArray(p.connections) && p.connections.length > 0) {
         p.connections.forEach((conn: any) => {
           const connPlatform = conn.platform?.toLowerCase();
+          const displayNameLower = (conn.displayName || "").toLowerCase();
+          const usernameLower = (conn.username || "").toLowerCase();
+          const isOrgOrPage =
+            connPlatform === "linkedin_page" ||
+            isBizAccount ||
+            Boolean(conn.connectionId?.includes("::")) ||
+            displayNameLower.includes("page") ||
+            displayNameLower.includes("technolabs") ||
+            displayNameLower.includes("company") ||
+            usernameLower.includes("page") ||
+            usernameLower.includes("company");
+
           let matches = false;
           if (activeChannel === "linkedin_page") {
-            matches = connPlatform === "linkedin_page";
+            // LinkedIn Company / Business Page can be stored as linkedin_page or standard linkedin
+            matches = connPlatform === "linkedin_page" || connPlatform === "linkedin";
           } else if (activeChannel === "threads") {
             matches = connPlatform === "threads";
           } else if (activeChannel === "linkedin") {
-            matches = connPlatform === "linkedin";
+            matches = connPlatform === "linkedin" || connPlatform === "linkedin_page";
           } else {
             matches = connPlatform === activeChannel.toLowerCase();
           }
@@ -533,6 +554,7 @@ export default function ContentDetailPage({
               handle: conn.username,
               avatar: conn.profilePicture,
               accountName: `${acc.name} • ${p.name}`,
+              isBusinessPage: isOrgOrPage,
             });
           }
         });
@@ -540,11 +562,11 @@ export default function ContentDetailPage({
         const profPlatform = p.platform?.toLowerCase();
         let matches = false;
         if (activeChannel === "linkedin_page") {
-          matches = profPlatform === "linkedin_page";
+          matches = profPlatform === "linkedin_page" || profPlatform === "linkedin";
         } else if (activeChannel === "threads") {
           matches = profPlatform === "threads";
         } else if (activeChannel === "linkedin") {
-          matches = profPlatform === "linkedin";
+          matches = profPlatform === "linkedin" || profPlatform === "linkedin_page";
         } else {
           matches = profPlatform === activeChannel.toLowerCase();
         }
@@ -556,11 +578,27 @@ export default function ContentDetailPage({
             profileName: p.profileName || `${acc.name} - ${p.platform}`,
             accountName: acc.name,
             avatar: p.profileAvatar,
+            isBusinessPage: isBizAccount,
           });
         }
       }
     });
   });
+
+  // Sort matching profiles so the most relevant one is default (index 0)
+  if (activeChannel === "linkedin_page") {
+    matchingProfiles.sort((a, b) => {
+      if (a.isBusinessPage && !b.isBusinessPage) return -1;
+      if (!a.isBusinessPage && b.isBusinessPage) return 1;
+      return 0;
+    });
+  } else if (activeChannel === "linkedin") {
+    matchingProfiles.sort((a, b) => {
+      if (!a.isBusinessPage && b.isBusinessPage) return -1;
+      if (a.isBusinessPage && !b.isBusinessPage) return 1;
+      return 0;
+    });
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-16">
@@ -1481,12 +1519,14 @@ export default function ContentDetailPage({
                   >
                     <option value="">
                       Default ({matchingProfiles[0].profileName}
-                      {matchingProfiles[0].handle ? ` - @${matchingProfiles[0].handle.replace(/^@/, "")}` : ""})
+                      {matchingProfiles[0].handle ? ` - @${matchingProfiles[0].handle.replace(/^@/, "")}` : ""}
+                      {matchingProfiles[0].isBusinessPage ? " • Business Page" : ""})
                     </option>
                     {matchingProfiles.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.accountName} → {p.profileName}
                         {p.handle ? ` (@${p.handle.replace(/^@/, "")})` : ""}
+                        {p.isBusinessPage ? " [Business Page]" : ""}
                       </option>
                     ))}
                   </select>
