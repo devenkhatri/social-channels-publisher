@@ -129,10 +129,6 @@ export default function LoginPage() {
           </form>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-zinc-500 dark:text-zinc-500 mt-6">
-          Default development password: <code className="text-zinc-700 dark:text-zinc-400 font-mono">admin123</code>
-        </p>
       </div>
     </div>
   );

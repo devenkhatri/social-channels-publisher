@@ -81,7 +81,7 @@ export default function DashboardPage() {
   >("any");
   const [search, setSearch] = useState("");
   const [sortOrder, setSortOrder] = useState<SortOption>("newest");
-  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "table">("table");
 
   // Pagination state
   const [pageSize, setPageSize] = useState<number>(24);
@@ -726,17 +726,17 @@ export default function DashboardPage() {
                   selectAll(filteredItems);
                 }
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white font-medium transition-all shadow-xs min-h-[36px]"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white font-medium transition-all shadow-xs min-h-[36px] whitespace-nowrap shrink-0"
             >
               {selectedIds.length === filteredItems.length && filteredItems.length > 0 ? (
                 <>
-                  <CheckSquare className="w-4 h-4 text-zinc-900 dark:text-zinc-100" />
-                  <span>Deselect All</span>
+                  <CheckSquare className="w-4 h-4 text-zinc-900 dark:text-zinc-100 shrink-0" />
+                  <span className="whitespace-nowrap">Deselect All</span>
                 </>
               ) : (
                 <>
-                  <Square className="w-4 h-4 text-zinc-400" />
-                  <span>Select All ({filteredItems.length})</span>
+                  <Square className="w-4 h-4 text-zinc-400 shrink-0" />
+                  <span className="whitespace-nowrap">Select All ({filteredItems.length})</span>
                 </>
               )}
             </button>
