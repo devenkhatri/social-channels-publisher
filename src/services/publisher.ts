@@ -331,7 +331,11 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
     } else if (post.channel === "threads" || post.channel === "twitter" || post.channel === "x") {
       if (post.postType === "feed") {
         // Pure text post / thread — do not attach media
-      } else if (post.postType === "video" || (!post.postType && !slidesFolder && (hyperframesVideo || regularVideo))) {
+      } else if (
+        post.postType === "video" ||
+        (!post.postType && post.channel === "threads" && (hyperframesVideo || regularVideo)) ||
+        (!post.postType && !slidesFolder && (hyperframesVideo || regularVideo))
+      ) {
         const video = hyperframesVideo || regularVideo;
         if (video) {
           const buffer = await getFileBuffer(video.id, video.downloadUrl);
@@ -344,9 +348,9 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
           uploadedMediaUrls.push(publicUrl);
           mediaItems.push({ type: "video", url: publicUrl });
         }
-      } else if (post.postType === "carousel" || slidesFolder || (!post.postType && slidesFolder)) {
-        // Threads supports up to 10 images in a carousel; Twitter allows up to 4
-        const maxImages = post.channel === "threads" ? 10 : 4;
+      } else if (post.channel !== "threads" && (post.postType === "carousel" || slidesFolder || (!post.postType && slidesFolder))) {
+        // Twitter allows up to 4 images
+        const maxImages = 4;
         let candidateFiles: Array<{ id: string; name: string; downloadUrl?: string; size?: number }> = [];
 
         if (slidesFolder) {

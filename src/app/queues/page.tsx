@@ -25,6 +25,7 @@ import {
   LayoutList,
   LayoutGrid,
   Filter,
+  ArrowUpDown,
 } from "lucide-react";
 
 interface QueuedPostPlatform {
@@ -203,6 +204,70 @@ export default function QueuesPage() {
       return true;
     });
   }, [data, selectedAccountId, selectedPlatform, selectedStatus, searchQuery]);
+
+  // Sorting state for queues table
+  type SortField = "status" | "scheduledFor" | "account" | "channels" | "content" | "media";
+  type SortDirection = "asc" | "desc";
+
+  const [sortField, setSortField] = useState<SortField>("scheduledFor");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDirection(field === "scheduledFor" ? "asc" : "asc");
+    }
+  };
+
+  // Sort filtered posts
+  const sortedPosts = useMemo(() => {
+    return [...filteredPosts].sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case "status": {
+          const aStat = (a.status || "").toLowerCase();
+          const bStat = (b.status || "").toLowerCase();
+          comparison = aStat.localeCompare(bStat);
+          break;
+        }
+        case "scheduledFor": {
+          const aTime = a.scheduledFor ? new Date(a.scheduledFor).getTime() : 0;
+          const bTime = b.scheduledFor ? new Date(b.scheduledFor).getTime() : 0;
+          comparison = aTime - bTime;
+          break;
+        }
+        case "account": {
+          const aAcc = (a.zernioAccountName || "").toLowerCase();
+          const bAcc = (b.zernioAccountName || "").toLowerCase();
+          comparison = aAcc.localeCompare(bAcc);
+          break;
+        }
+        case "channels": {
+          const aCh = a.platforms.map((p) => p.platform).sort().join(",").toLowerCase();
+          const bCh = b.platforms.map((p) => p.platform).sort().join(",").toLowerCase();
+          comparison = aCh.localeCompare(bCh);
+          break;
+        }
+        case "content": {
+          const aText = (a.title || a.content || "").toLowerCase();
+          const bText = (b.title || b.content || "").toLowerCase();
+          comparison = aText.localeCompare(bText);
+          break;
+        }
+        case "media": {
+          const aMedia = a.mediaItems?.length || 0;
+          const bMedia = b.mediaItems?.length || 0;
+          comparison = aMedia - bMedia;
+          break;
+        }
+        default:
+          comparison = 0;
+      }
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  }, [filteredPosts, sortField, sortDirection]);
 
   // Aggregate platforms across all accounts
   const allPlatforms = useMemo(() => {
@@ -631,7 +696,7 @@ export default function QueuesPage() {
       ) : viewMode === "cards" ? (
         /* CARDS / TIMELINE VIEW */
         <div className="space-y-4">
-          {filteredPosts.map((post) => {
+          {sortedPosts.map((post) => {
             const isExpanded = expandedPostIds[post.id];
             const hasLongContent = post.content && post.content.length > 280;
             const isDeleting = deleteMutation.isPending && deleteMutation.variables?.postId === post.id;
@@ -820,17 +885,119 @@ export default function QueuesPage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-zinc-50 dark:bg-zinc-950/60 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 font-semibold uppercase text-[10px] tracking-wider">
                 <tr>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Scheduled For</th>
-                  <th className="py-3 px-4">Account</th>
-                  <th className="py-3 px-4">Channels</th>
-                  <th className="py-3 px-4 min-w-[280px]">Content & Title</th>
-                  <th className="py-3 px-4">Media</th>
+                  <th
+                    onClick={() => handleSort("status")}
+                    className="py-3 px-4 cursor-pointer select-none hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                    title="Click to sort by status"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Status</span>
+                      {sortField === "status" ? (
+                        sortDirection === "asc" ? (
+                          <ChevronUp className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-zinc-400 opacity-60" />
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort("scheduledFor")}
+                    className="py-3 px-4 cursor-pointer select-none hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                    title="Click to sort by scheduled time"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Scheduled For</span>
+                      {sortField === "scheduledFor" ? (
+                        sortDirection === "asc" ? (
+                          <ChevronUp className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-zinc-400 opacity-60" />
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort("account")}
+                    className="py-3 px-4 cursor-pointer select-none hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                    title="Click to sort by account"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Account</span>
+                      {sortField === "account" ? (
+                        sortDirection === "asc" ? (
+                          <ChevronUp className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-zinc-400 opacity-60" />
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort("channels")}
+                    className="py-3 px-4 cursor-pointer select-none hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                    title="Click to sort by channels"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Channels</span>
+                      {sortField === "channels" ? (
+                        sortDirection === "asc" ? (
+                          <ChevronUp className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-zinc-400 opacity-60" />
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort("content")}
+                    className="py-3 px-4 min-w-[280px] cursor-pointer select-none hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                    title="Click to sort by title & content"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Content & Title</span>
+                      {sortField === "content" ? (
+                        sortDirection === "asc" ? (
+                          <ChevronUp className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-zinc-400 opacity-60" />
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort("media")}
+                    className="py-3 px-4 cursor-pointer select-none hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                    title="Click to sort by media count"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Media</span>
+                      {sortField === "media" ? (
+                        sortDirection === "asc" ? (
+                          <ChevronUp className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-zinc-400 opacity-60" />
+                      )}
+                    </div>
+                  </th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {filteredPosts.map((post) => {
+                {sortedPosts.map((post) => {
                   const isDeleting = deleteMutation.isPending && deleteMutation.variables?.postId === post.id;
                   const statusInfo = getStatusBadge(post.status);
                   return (

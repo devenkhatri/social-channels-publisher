@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, schema } from "@/db";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { listFolderChildren, renameFolder, getFileContentAsText } from "@/services/onedrive";
 import { sortSlidesNaturally, extractYouTubeContent, extractTwitterContent } from "@/services/extractor";
 
@@ -46,8 +46,19 @@ export async function GET(
       for (const ch of missingChannels) {
         const postTitle = liPost?.title || item.title || "";
         const postBody = liPost?.body || "";
-        const mediaType = liPost?.mediaType || null;
-        const postType = liPost?.postType || "feed";
+        let mediaType = liPost?.mediaType || null;
+        let postType = liPost?.postType || "feed";
+
+        if (ch === "linkedin" || ch === "linkedin_page") {
+          postType = "document";
+          mediaType = "pdf";
+        } else if (ch === "youtube" || ch === "instagram" || ch === "facebook") {
+          postType = "reel";
+          mediaType = "video_reel";
+        } else if (ch === "threads") {
+          postType = "feed";
+          mediaType = null;
+        }
 
         await db.insert(schema.channelPosts).values({
           id: crypto.randomUUID(),
@@ -137,11 +148,11 @@ export async function GET(
               updates.body = targetThreadsBody;
               threadsPost.body = targetThreadsBody;
             }
-            if (threadsPost.postType === "feed" && assets.slides && assets.slides.length > 0) {
-              updates.postType = "carousel";
-              updates.mediaType = "carousel";
-              threadsPost.postType = "carousel";
-              threadsPost.mediaType = "carousel";
+            if (threadsPost.postType === "carousel" || threadsPost.mediaType === "carousel" || threadsPost.mediaType === "cover") {
+              updates.postType = "feed";
+              updates.mediaType = null;
+              threadsPost.postType = "feed";
+              threadsPost.mediaType = null;
             }
             if (Object.keys(updates).length > 0) {
               updates.updatedAt = new Date().toISOString();
@@ -159,10 +170,35 @@ export async function GET(
       console.warn("Could not fetch live OneDrive assets for item:", graphError);
     }
 
+    // Fetch all content items ordered identically to dashboard to determine prev/next record
+    const allItems = await db
+      .select({
+        id: schema.contentItems.id,
+        title: schema.contentItems.title,
+        folderName: schema.contentItems.folderName,
+        isDone: schema.contentItems.isDone,
+      })
+      .from(schema.contentItems)
+      .orderBy(desc(schema.contentItems.createdAt));
+
+    const currentIndex = allItems.findIndex((it) => it.id === item.id);
+    const prevItem = currentIndex > 0 ? allItems[currentIndex - 1] : null;
+    const nextItem = currentIndex !== -1 && currentIndex < allItems.length - 1 ? allItems[currentIndex + 1] : null;
+
+    const navigation = {
+      prevId: prevItem ? prevItem.id : null,
+      prevTitle: prevItem ? (prevItem.title || prevItem.folderName) : null,
+      nextId: nextItem ? nextItem.id : null,
+      nextTitle: nextItem ? (nextItem.title || nextItem.folderName) : null,
+      currentIndex: currentIndex !== -1 ? currentIndex + 1 : 1,
+      totalCount: allItems.length,
+    };
+
     return NextResponse.json({
       item,
       posts,
       assets,
+      navigation,
     });
   } catch (error: any) {
     if (error?.digest) {

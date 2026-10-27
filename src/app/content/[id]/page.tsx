@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -63,6 +64,14 @@ interface ContentDetailResponse {
     renamedAt: string | null;
     createdAt: string;
   };
+  navigation?: {
+    prevId: string | null;
+    prevTitle: string | null;
+    nextId: string | null;
+    nextTitle: string | null;
+    currentIndex: number;
+    totalCount: number;
+  };
   posts: Array<{
     id: string;
     channel: ChannelType;
@@ -106,6 +115,7 @@ export default function ContentDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   const [activeChannel, setActiveChannel] = useState<ChannelType>("linkedin");
@@ -117,6 +127,21 @@ export default function ContentDetailPage({
     text: string;
     type: "success" | "error";
   } | null>(null);
+
+  // Live publishing progress state for transparent per-channel feedback
+  const [publishProgress, setPublishProgress] = useState<{
+    isActive: boolean;
+    currentChannel?: string;
+    step: number;
+    total: number;
+  }>({
+    isActive: false,
+    step: 0,
+    total: 0,
+  });
+
+  // Swipe gesture detection on mobile to navigate between content records
+  const [touchCoords, setTouchCoords] = useState<{ x: number; y: number } | null>(null);
 
   // Form states per channel
   const [formState, setFormState] = useState<{
@@ -152,15 +177,72 @@ export default function ContentDetailPage({
     },
   });
 
+  // Handle mobile swipe start
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    if (
+      target.closest("textarea") ||
+      target.closest("input") ||
+      target.closest("button") ||
+      target.closest("#slide-prev-btn") ||
+      target.closest("#slide-next-btn")
+    ) {
+      setTouchCoords(null);
+      return;
+    }
+    setTouchCoords({
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+    });
+  };
+
+  // Handle mobile swipe end
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchCoords || !data?.navigation) return;
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
+    const dx = endX - touchCoords.x;
+    const dy = endY - touchCoords.y;
+
+    // Minimum horizontal movement of 60px, must be mostly horizontal
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+      if (dx < 0 && data.navigation.nextId) {
+        // Swiped Left -> Navigate to Next post
+        setToastMessage({
+          text: `Navigating to next post...`,
+          type: "success",
+        });
+        router.push(`/content/${data.navigation.nextId}`);
+      } else if (dx > 0 && data.navigation.prevId) {
+        // Swiped Right -> Navigate to Previous post
+        setToastMessage({
+          text: `Navigating to previous post...`,
+          type: "success",
+        });
+        router.push(`/content/${data.navigation.prevId}`);
+      }
+    }
+    setTouchCoords(null);
+  };
+
   // Populate form states once data is loaded
   useEffect(() => {
     if (data?.posts) {
       const initial: any = {};
       data.posts.forEach((p) => {
+        let postType = p.postType;
+        if (!postType) {
+          if (p.channel === "linkedin" || p.channel === "linkedin_page") postType = "document";
+          else if (p.channel === "youtube" || p.channel === "instagram" || p.channel === "facebook") postType = "reel";
+          else postType = "feed";
+        }
+        if (p.channel === "threads" && postType === "carousel") {
+          postType = "feed";
+        }
         initial[p.channel] = {
           title: p.title || "",
           body: p.body || "",
-          postType: p.postType || "feed",
+          postType,
           zernioProfileId: (p as any).zernioConnectionId || p.zernioProfileId || "",
         };
       });
@@ -187,37 +269,27 @@ export default function ContentDetailPage({
     if (!data?.assets) return;
     const { assets } = data;
     const currentPostType = formState[activeChannel]?.postType;
-    if (activeChannel === "youtube") {
+
+    if (activeChannel === "linkedin" || activeChannel === "linkedin_page") {
+      // PDF is default for LinkedIn
+      if (assets.pdfs && assets.pdfs.length > 0) {
+        setActiveMediaTab("pdf");
+      } else if (assets.hyperframesVideo || (assets.videos && assets.videos.length > 0)) {
+        setActiveMediaTab("video");
+      } else if (assets.slides && assets.slides.length > 0) {
+        setActiveMediaTab("slides");
+      }
+    } else if (activeChannel === "youtube" || activeChannel === "instagram" || activeChannel === "facebook") {
+      // Hyperframe video is default for YouTube, Instagram, Facebook
       if (assets.hyperframesVideo || (assets.videos && assets.videos.length > 0)) {
         setActiveMediaTab("video");
       } else if (assets.slides && assets.slides.length > 0) {
         setActiveMediaTab("slides");
       }
-    } else if (activeChannel === "linkedin" || activeChannel === "linkedin_page") {
-      if (assets.slides && assets.slides.length > 0) {
-        setActiveMediaTab("slides");
-      } else if (assets.pdfs && assets.pdfs.length > 0) {
-        setActiveMediaTab("pdf");
-      } else if (assets.hyperframesVideo || (assets.videos && assets.videos.length > 0)) {
-        setActiveMediaTab("video");
-      }
     } else if (activeChannel === "threads") {
+      // Text-only is default for Threads
       if (currentPostType === "video" && (assets.hyperframesVideo || (assets.videos && assets.videos.length > 0))) {
         setActiveMediaTab("video");
-      } else if (currentPostType === "carousel" && assets.slides && assets.slides.length > 0) {
-        setActiveMediaTab("slides");
-      } else if (assets.slides && assets.slides.length > 0) {
-        setActiveMediaTab("slides");
-      } else if (assets.hyperframesVideo || (assets.videos && assets.videos.length > 0)) {
-        setActiveMediaTab("video");
-      } else if (assets.coverFile) {
-        setActiveMediaTab("cover");
-      }
-    } else if (activeChannel === "instagram" || activeChannel === "facebook") {
-      if (currentPostType === "reel" && (assets.hyperframesVideo || (assets.videos && assets.videos.length > 0))) {
-        setActiveMediaTab("video");
-      } else if (assets.slides && assets.slides.length > 0) {
-        setActiveMediaTab("slides");
       }
     } else {
       if (assets.slides && assets.slides.length > 0) {
@@ -439,49 +511,115 @@ export default function ContentDetailPage({
     },
   });
 
-  // Publish all channels mutation
-  const publishAllMutation = useMutation({
-    mutationFn: async () => {
-      if (currentPost) {
+  // Publish all pending channels sequentially with real-time per-channel progress and toast feedback
+  const handlePublishAll = async () => {
+    if (!data?.posts) return;
+
+    // 1. Save currently active post edits first
+    if (currentPost) {
+      try {
         await fetch(`/api/posts/${currentPost.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(currentForm),
         });
+      } catch (err) {
+        console.warn("Could not auto-save current post before publishing:", err);
       }
+    }
 
-      const res = await fetch("/api/zernio/publish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contentItemId: id }),
-      });
-      const json = await res.json();
-      if (!res.ok || json.success === false) {
-        throw new Error(json.error || "Failed to publish all channels");
-      }
-      return json;
-    },
-    onSuccess: (res: any) => {
-      queryClient.invalidateQueries({ queryKey: ["content-detail", id] });
-      queryClient.invalidateQueries({ queryKey: ["content-items"] });
+    const pendingPosts = data.posts.filter(
+      (p) => p.status !== "published" && p.status !== "scheduled"
+    );
+
+    if (pendingPosts.length === 0) {
       setToastMessage({
-        text: res?.message || (res?.folderRenamed
-          ? "All channels published & folder marked -Done on OneDrive!"
-          : "Published channels successfully!"),
+        text: "All channels are already published or queued.",
         type: "success",
       });
-      setTimeout(() => setToastMessage(null), 5000);
-    },
-    onError: (err: any) => {
-      queryClient.invalidateQueries({ queryKey: ["content-detail", id] });
-      queryClient.invalidateQueries({ queryKey: ["content-items"] });
+      setTimeout(() => setToastMessage(null), 4000);
+      return;
+    }
+
+    const channelNameMap: Record<string, string> = {
+      linkedin: "LinkedIn (Personal)",
+      linkedin_page: "LinkedIn (Business Page)",
+      threads: "Threads",
+      youtube: "YouTube Shorts",
+      instagram: "Instagram",
+      facebook: "Facebook",
+      skool: "Skool",
+    };
+
+    setPublishProgress({
+      isActive: true,
+      currentChannel: channelNameMap[pendingPosts[0].channel] || pendingPosts[0].channel,
+      step: 1,
+      total: pendingPosts.length,
+    });
+
+    let successCount = 0;
+    const failedChannels: string[] = [];
+
+    for (let i = 0; i < pendingPosts.length; i++) {
+      const p = pendingPosts[i];
+      const chName = channelNameMap[p.channel] || p.channel;
+
+      setPublishProgress({
+        isActive: true,
+        currentChannel: chName,
+        step: i + 1,
+        total: pendingPosts.length,
+      });
+
       setToastMessage({
-        text: err.message || "Failed to publish channels",
-        type: "error",
+        text: `Publishing [${i + 1}/${pendingPosts.length}]: ${chName}...`,
+        type: "success",
+      });
+
+      try {
+        const res = await fetch("/api/zernio/publish", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ postId: p.id }),
+        });
+        const json = await res.json();
+        if (!res.ok || json.success === false) {
+          throw new Error(json.error || `Failed to publish to ${chName}`);
+        }
+        successCount++;
+        // Invalidate immediately so this channel's checklist card turns green in real time!
+        await queryClient.invalidateQueries({ queryKey: ["content-detail", id] });
+      } catch (err: any) {
+        console.error(`Error publishing to ${chName}:`, err);
+        failedChannels.push(chName);
+        await queryClient.invalidateQueries({ queryKey: ["content-detail", id] });
+      }
+    }
+
+    setPublishProgress({
+      isActive: false,
+      step: pendingPosts.length,
+      total: pendingPosts.length,
+    });
+
+    await queryClient.invalidateQueries({ queryKey: ["content-detail", id] });
+    await queryClient.invalidateQueries({ queryKey: ["content-items"] });
+
+    if (failedChannels.length === 0) {
+      setToastMessage({
+        text: `✓ All ${successCount} channels published! Folder marked -Done on OneDrive.`,
+        type: "success",
       });
       setTimeout(() => setToastMessage(null), 6000);
-    },
-  });
+    } else {
+      setToastMessage({
+        text: `Published ${successCount} channel${successCount > 1 ? "s" : ""}, but ${failedChannels.length} failed: ${failedChannels.join(", ")}`,
+        type: "error",
+      });
+      setTimeout(() => setToastMessage(null), 8000);
+    }
+  };
 
   // Single channel status manual toggle mutation (e.g. Mark as Done / Undo)
   const updateStatusMutation = useMutation({
@@ -702,7 +840,11 @@ export default function ContentDetailPage({
       return 0;
     });
   }  return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-16 transition-colors">
+    <div
+      className="max-w-6xl mx-auto space-y-6 pb-16 transition-colors"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Toast Notification */}
       {toastMessage && (
         <div
@@ -721,15 +863,79 @@ export default function ContentDetailPage({
         </div>
       )}
 
+      {/* Live Publishing Progress Card */}
+      {publishProgress.isActive && (
+        <div className="fixed bottom-20 lg:bottom-6 right-4 sm:right-6 z-50 p-4 rounded-2xl shadow-2xl border bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-700 dark:border-zinc-300 min-w-[280px] max-w-sm animate-in slide-in-from-bottom-3 duration-200 space-y-2.5">
+          <div className="flex items-center justify-between text-xs font-semibold">
+            <span className="flex items-center gap-2">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-sky-400 dark:text-sky-600 shrink-0" />
+              <span>Publishing: {publishProgress.currentChannel}</span>
+            </span>
+            <span className="font-mono text-[11px] opacity-80">
+              {publishProgress.step} of {publishProgress.total}
+            </span>
+          </div>
+          <div className="w-full bg-zinc-800 dark:bg-zinc-200 h-1.5 rounded-full overflow-hidden">
+            <div
+              className="bg-sky-500 h-full transition-all duration-300"
+              style={{
+                width: `${Math.round((publishProgress.step / Math.max(1, publishProgress.total)) * 100)}%`,
+              }}
+            />
+          </div>
+          <p className="text-[11px] text-zinc-400 dark:text-zinc-600">
+            Publishing sequentially across channels with live status updates...
+          </p>
+        </div>
+      )}
+
       {/* Navigation & Header */}
       <div className="flex flex-col gap-3">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors w-fit min-h-[32px]"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Dashboard</span>
-        </Link>
+        <div className="flex items-center justify-between gap-2">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors w-fit min-h-[32px]"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to Dashboard</span>
+          </Link>
+
+          {/* Record Prev/Next Navigation Controls */}
+          {data?.navigation && (
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="hidden sm:inline font-mono text-[11px] text-zinc-400 dark:text-zinc-500 mr-1">
+                Post {data.navigation.currentIndex} of {data.navigation.totalCount}
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  data.navigation?.prevId && router.push(`/content/${data.navigation.prevId}`)
+                }
+                disabled={!data.navigation.prevId}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition-colors text-zinc-700 dark:text-zinc-300 font-medium shadow-2xs"
+                title={data.navigation.prevTitle ? `Previous post: ${data.navigation.prevTitle}` : "No previous post"}
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">Prev</span>
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  data.navigation?.nextId && router.push(`/content/${data.navigation.nextId}`)
+                }
+                disabled={!data.navigation.nextId}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition-colors text-zinc-700 dark:text-zinc-300 font-medium shadow-2xs"
+                title={data.navigation.nextTitle ? `Next post: ${data.navigation.nextTitle}` : "No next post"}
+              >
+                <span className="hidden xs:inline">Next</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+              <span className="sm:hidden text-[10px] text-zinc-400 font-mono ml-0.5">
+                {data.navigation.currentIndex}/{data.navigation.totalCount}
+              </span>
+            </div>
+          )}
+        </div>
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-zinc-200 dark:border-zinc-800">
           <div className="flex-1 min-w-0 pr-2">
@@ -747,25 +953,31 @@ export default function ContentDetailPage({
               >
                 {item.isDone === 1 ? "Published (-Done)" : "Pending"}
               </span>
+              <span className="text-[10px] text-zinc-400 sm:hidden">
+                (Swipe left/right to move posts)
+              </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 mt-1 truncate">
-              {item.title || item.originalFolderName}
-            </h1>
+            {/* Title with OneDrive Icon Button right beside it */}
+            <div className="flex items-center gap-2 mt-1">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 truncate">
+                {item.title || item.originalFolderName}
+              </h1>
+              {item.folderPath && (
+                <a
+                  href={item.folderPath}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 rounded-xl bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 hover:text-blue-600 dark:text-zinc-400 dark:hover:text-blue-400 border border-zinc-200 dark:border-zinc-800 transition-colors shadow-2xs shrink-0 flex items-center justify-center"
+                  title="Open folder in OneDrive"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              )}
+            </div>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap justify-start sm:justify-end">
-            {item.folderPath && (
-              <a
-                href={item.folderPath}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-medium border border-zinc-200 dark:border-zinc-800 transition-colors shadow-xs whitespace-nowrap shrink-0"
-              >
-                <span>Open in OneDrive</span>
-                <ExternalLink className="w-3 h-3 text-zinc-400" />
-              </a>
-            )}
-
+          {/* Action Buttons Aligned Together */}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap justify-start sm:justify-end">
             {item.isDone === 0 && (
               <>
                 <button
@@ -775,17 +987,17 @@ export default function ContentDetailPage({
                         ? `Publish the remaining ${pendingCount} pending channel${pendingCount > 1 ? "s" : ""} (${posts.filter(p => p.status !== "published" && p.status !== "scheduled").map(p => p.channel).join(", ")})?`
                         : `Publish this content across all configured social channels?`;
                     if (confirm(confirmMsg)) {
-                      publishAllMutation.mutate();
+                      handlePublishAll();
                     }
                   }}
-                  disabled={publishAllMutation.isPending || pendingCount === 0}
+                  disabled={publishProgress.isActive || pendingCount === 0}
                   className={`flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-semibold shadow-xs transition-all disabled:opacity-50 whitespace-nowrap shrink-0 ${
                     pendingCount === 0
                       ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 cursor-default"
                       : "bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900"
                   }`}
                 >
-                  {publishAllMutation.isPending ? (
+                  {publishProgress.isActive ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                   ) : pendingCount === 0 ? (
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
@@ -793,7 +1005,9 @@ export default function ContentDetailPage({
                     <Send className="w-3.5 h-3.5" />
                   )}
                   <span>
-                    {pendingCount === 0
+                    {publishProgress.isActive
+                      ? `Publishing (${publishProgress.step}/${publishProgress.total})...`
+                      : pendingCount === 0
                       ? "All Channels Published"
                       : pendingCount < totalChannels
                       ? `Publish Pending (${pendingCount})`
@@ -811,7 +1025,7 @@ export default function ContentDetailPage({
                       markDoneMutation.mutate();
                     }
                   }}
-                  disabled={markDoneMutation.isPending}
+                  disabled={markDoneMutation.isPending || publishProgress.isActive}
                   className="flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs transition-all disabled:opacity-50 whitespace-nowrap shrink-0"
                 >
                   {markDoneMutation.isPending ? (
@@ -1679,7 +1893,7 @@ export default function ContentDetailPage({
                 <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
                   Media / Publication Format
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className={`grid gap-2 ${activeChannel === "threads" ? "grid-cols-2" : "grid-cols-3"}`}>
                   {activeChannel === "linkedin" || activeChannel === "linkedin_page" ? (
                     <>
                       <button
@@ -1718,22 +1932,6 @@ export default function ContentDetailPage({
                     </>
                   ) : activeChannel === "threads" ? (
                     <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          handleFormChange("postType", "carousel");
-                          if (assets.slides && assets.slides.length > 0) {
-                            setActiveMediaTab("slides");
-                          }
-                        }}
-                        className={`py-2 px-3 min-h-[40px] rounded-xl text-xs font-medium border text-center transition-all ${
-                          currentForm.postType === "carousel"
-                            ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs font-semibold"
-                            : "bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
-                        }`}
-                      >
-                        🖼️ Image / Slides
-                      </button>
                       <button
                         type="button"
                         onClick={() => {
@@ -1804,12 +2002,7 @@ export default function ContentDetailPage({
                 {/* Helpful Threads media badge */}
                 {activeChannel === "threads" && (
                   <div className="text-[11px] mt-2 p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
-                    {currentForm.postType === "carousel" ? (
-                      <span className="text-emerald-700 dark:text-emerald-300 font-medium flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
-                        <span><strong>Image Carousel Active:</strong> Up to 10 slides from this folder will be attached to your first post.</span>
-                      </span>
-                    ) : currentForm.postType === "video" ? (
+                    {currentForm.postType === "video" ? (
                       <span className="text-sky-700 dark:text-sky-300 font-medium flex items-center gap-1.5">
                         <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-sky-600" />
                         <span><strong>Video Active:</strong> MP4 video will be attached to your first post.</span>
@@ -1817,7 +2010,7 @@ export default function ContentDetailPage({
                     ) : (
                       <span className="text-amber-700 dark:text-amber-300 font-medium flex items-center gap-1.5">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
-                        <span><strong>Text Only:</strong> No images or video will be attached. Choose <em>Image / Slides</em> above if you want your carousel attached.</span>
+                        <span><strong>Text Only:</strong> No media will be attached. Choose <em>Video Post</em> above if you want your video attached.</span>
                       </span>
                     )}
                   </div>

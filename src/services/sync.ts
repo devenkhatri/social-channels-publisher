@@ -340,19 +340,8 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
         // Zernio supports multithreaded sequences on Threads via platformSpecificData.threadItems!
         // Use multithreaded variant if available; otherwise fallback to single tweet variant or caption.
         postBody = twitterExtract.threadVariant || twitterExtract.singleTweetVariant || captionExtract.body || "";
-        if (sortedSlides.length > 0) {
-          mediaType = "carousel";
-          postType = "carousel";
-        } else if (hyperframesVideo || regularVideo) {
-          mediaType = "video";
-          postType = "video";
-        } else if (coverFile) {
-          mediaType = "cover";
-          postType = "feed";
-        } else {
-          mediaType = null;
-          postType = "feed";
-        }
+        mediaType = null;
+        postType = "feed";
       } else if (channel === "youtube") {
         postTitle = youtubeExtract.title || captionExtract.title || primaryTitle;
         postBody = youtubeExtract.body || captionExtract.body || "";
@@ -369,12 +358,12 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
         if (hyperframesVideo) {
           mediaType = "video_reel";
           postType = "reel";
+        } else if (regularVideo) {
+          mediaType = "video";
+          postType = "reel";
         } else if (sortedSlides.length > 0) {
           mediaType = "carousel";
           postType = "carousel";
-        } else if (regularVideo) {
-          mediaType = "video";
-          postType = "feed";
         }
       } else if (channel === "facebook") {
         postTitle = null;
@@ -382,12 +371,12 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
         if (hyperframesVideo) {
           mediaType = "video_reel";
           postType = "reel";
+        } else if (regularVideo) {
+          mediaType = "video";
+          postType = "reel";
         } else if (sortedSlides.length > 0) {
           mediaType = "carousel";
           postType = "carousel";
-        } else if (regularVideo) {
-          mediaType = "video";
-          postType = "feed";
         }
       } else if (channel === "skool") {
         postTitle = skoolExtract.title || captionExtract.title || primaryTitle;

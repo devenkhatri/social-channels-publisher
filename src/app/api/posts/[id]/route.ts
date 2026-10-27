@@ -27,7 +27,9 @@ export async function PATCH(
 
     if (body.title !== undefined) updateData.title = body.title ? stripMarkdown(body.title) : null;
     if (body.body !== undefined) updateData.body = body.body ? stripMarkdown(body.body) : "";
-    if (body.postType !== undefined) updateData.postType = body.postType;
+    if (body.postType !== undefined) {
+      updateData.postType = (existing[0].channel === "threads" && body.postType === "carousel") ? "feed" : body.postType;
+    }
     if (body.status !== undefined) {
       updateData.status = body.status;
       if (body.status === "published") {
