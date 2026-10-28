@@ -902,6 +902,39 @@ export async function publishPostToZernio(
   };
 }
 
+export function constructPlatformPostUrl(
+  platform: string,
+  postId: string,
+  username?: string | null
+): string | null {
+  if (!postId) return null;
+  const p = (platform || "").toLowerCase();
+  if (p === "linkedin" || p === "linkedin_page") {
+    const urn = postId.startsWith("urn:li:") ? postId : `urn:li:ugcPost:${postId}`;
+    return `https://www.linkedin.com/feed/update/${urn}/`;
+  }
+  if (p === "threads") {
+    return username
+      ? `https://www.threads.net/@${username}/post/${postId}`
+      : `https://www.threads.net/post/${postId}`;
+  }
+  if (p === "youtube") {
+    return `https://www.youtube.com/watch?v=${postId}`;
+  }
+  if (p === "twitter" || p === "x") {
+    return username
+      ? `https://x.com/${username}/status/${postId}`
+      : `https://x.com/i/web/status/${postId}`;
+  }
+  if (p === "facebook") {
+    return `https://www.facebook.com/${postId}`;
+  }
+  if (p === "instagram") {
+    return `https://www.instagram.com/p/${postId}/`;
+  }
+  return null;
+}
+
 export interface QueuedPostPlatform {
   platform: string;
   status: string;
@@ -910,6 +943,9 @@ export interface QueuedPostPlatform {
   profilePicture?: string | null;
   scheduledFor?: string | null;
   platformSpecificData?: Record<string, any>;
+  platformPostUrl?: string | null;
+  platformPostId?: string | null;
+  publishedAt?: string | null;
 }
 
 export interface QueuedPostItem {
@@ -928,6 +964,7 @@ export interface QueuedPostItem {
     type: "video" | "image" | "document" | string;
   }>;
   platforms: QueuedPostPlatform[];
+  publishedAt?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 }
@@ -1016,14 +1053,26 @@ export async function getZernioQueues(options?: {
         const platforms: QueuedPostPlatform[] = (p.platforms || []).map((pl: any) => {
           const platName = pl.platform || "unknown";
           platformsSet.add(platName);
+
+          let postUrl = pl.platformPostUrl || p.platformPostUrl || null;
+          const postId = pl.platformPostId || p.platformPostId || null;
+          const username = pl.accountId?.username || null;
+
+          if (!postUrl && postId) {
+            postUrl = constructPlatformPostUrl(platName, String(postId), username);
+          }
+
           return {
             platform: platName,
-            status: pl.status || "pending",
-            username: pl.accountId?.username || null,
+            status: pl.status || p.status || "pending",
+            username,
             displayName: pl.accountId?.displayName || null,
             profilePicture: pl.accountId?.profilePicture || null,
             scheduledFor: pl.scheduledFor || p.scheduledFor || null,
             platformSpecificData: pl.platformSpecificData || {},
+            platformPostUrl: postUrl,
+            platformPostId: postId ? String(postId) : null,
+            publishedAt: pl.publishedAt || p.publishedAt || null,
           };
         });
 
@@ -1043,6 +1092,7 @@ export async function getZernioQueues(options?: {
             type: m.type || "image",
           })),
           platforms,
+          publishedAt: p.publishedAt || null,
           createdAt: p.createdAt || null,
           updatedAt: p.updatedAt || null,
         });

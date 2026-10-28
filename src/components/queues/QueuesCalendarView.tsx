@@ -22,6 +22,7 @@ import {
   RefreshCw,
   Sparkles,
   ArrowRight,
+  Building2,
 } from "lucide-react";
 
 interface QueuedPostPlatform {
@@ -32,6 +33,9 @@ interface QueuedPostPlatform {
   profilePicture?: string | null;
   scheduledFor?: string | null;
   platformSpecificData?: Record<string, any>;
+  platformPostUrl?: string | null;
+  platformPostId?: string | null;
+  publishedAt?: string | null;
 }
 
 export interface QueuedPostItem {
@@ -50,6 +54,7 @@ export interface QueuedPostItem {
     type: "video" | "image" | "document" | string;
   }>;
   platforms: QueuedPostPlatform[];
+  publishedAt?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 }
@@ -85,10 +90,10 @@ export interface ChannelMeta {
 export function getChannelMeta(platformName: string): ChannelMeta {
   const p = (platformName || "unknown").toLowerCase();
 
-  if (p === "linkedin" || p === "linkedin_page") {
+  if (p === "linkedin") {
     return {
-      name: p === "linkedin_page" ? "LinkedIn Business Page" : "LinkedIn Personal",
-      short: "LinkedIn",
+      name: "LinkedIn Personal",
+      short: "LI Personal",
       brandColor: "#0A66C2",
       borderLeft: "border-l-[#0A66C2]",
       borderClass: "border-[#0A66C2]",
@@ -99,6 +104,23 @@ export function getChannelMeta(platformName: string): ChannelMeta {
       cardBorder: "border-sky-500/25 dark:border-sky-500/35",
       pillBg: "bg-[#0A66C2]/10 text-[#0A66C2] dark:text-sky-300 border-[#0A66C2]/25",
       accentText: "text-[#0A66C2] dark:text-sky-300",
+    };
+  }
+
+  if (p === "linkedin_page") {
+    return {
+      name: "LinkedIn Business Page",
+      short: "LI Page",
+      brandColor: "#4338CA",
+      borderLeft: "border-l-indigo-600 dark:border-l-indigo-500",
+      borderClass: "border-indigo-600 dark:border-indigo-500",
+      badgeBg: "bg-indigo-700 dark:bg-indigo-600",
+      badgeText: "text-white",
+      dotBg: "bg-indigo-600 dark:bg-indigo-400",
+      cardBg: "bg-indigo-500/[0.05] dark:bg-indigo-500/[0.10]",
+      cardBorder: "border-indigo-500/25 dark:border-indigo-500/35",
+      pillBg: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/25",
+      accentText: "text-indigo-600 dark:text-indigo-400",
     };
   }
 
@@ -223,9 +245,20 @@ export function getChannelMeta(platformName: string): ChannelMeta {
 export function ChannelBrandIcon({ platform, className = "w-3 h-3" }: { platform: string; className?: string }) {
   const p = (platform || "").toLowerCase();
 
-  if (p === "linkedin" || p === "linkedin_page") {
+  if (p === "linkedin_page") {
     return (
-      <svg className={`${className} fill-current`} viewBox="0 0 24 24">
+      <span className="inline-flex items-center gap-0.5 shrink-0" title="LinkedIn Business Page">
+        <svg className={`${className} fill-current`} viewBox="0 0 24 24">
+          <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.2a1.62 1.62 0 1 0 1.62 1.62A1.62 1.62 0 0 0 7.83 6.2Z" />
+        </svg>
+        <Building2 className="w-2.5 h-2.5 opacity-90 shrink-0" />
+      </span>
+    );
+  }
+
+  if (p === "linkedin") {
+    return (
+      <svg className={`${className} fill-current`} viewBox="0 0 24 24" aria-label="LinkedIn Personal">
         <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.2a1.62 1.62 0 1 0 1.62 1.62A1.62 1.62 0 0 0 7.83 6.2Z" />
       </svg>
     );
@@ -299,6 +332,18 @@ export function QueuesCalendarView({
   const [channelFilter, setChannelFilter] = useState<string>("all");
   const [inspectingPost, setInspectingPost] = useState<QueuedPostItem | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Close Post Details modal on Escape key press
+  useEffect(() => {
+    if (!inspectingPost) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setInspectingPost(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [inspectingPost]);
 
   const viewYear = currentDate.getFullYear();
   const viewMonth = currentDate.getMonth();
@@ -838,6 +883,23 @@ export function QueuesCalendarView({
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {post.platforms.map((pl, idx) => {
                           const plMeta = getChannelMeta(pl.platform);
+                          if (pl.platformPostUrl) {
+                            return (
+                              <a
+                                key={idx}
+                                href={pl.platformPostUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold shadow-2xs hover:brightness-110 hover:shadow-xs transition-all cursor-pointer ${plMeta.badgeBg} ${plMeta.badgeText}`}
+                                title={`Open live post on ${plMeta.name}`}
+                              >
+                                <ChannelBrandIcon platform={pl.platform} className="w-3.5 h-3.5" />
+                                <span>{plMeta.name}</span>
+                                <ExternalLink className="w-3 h-3 opacity-75 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                              </a>
+                            );
+                          }
                           return (
                             <span
                               key={idx}
@@ -1002,7 +1064,10 @@ export function QueuesCalendarView({
 
       {/* Post Detail Modal */}
       {inspectingPost && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in"
+          onClick={() => setInspectingPost(null)}
+        >
           <div
             className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl p-6 space-y-5"
             onClick={(e) => e.stopPropagation()}
@@ -1010,8 +1075,15 @@ export function QueuesCalendarView({
             {/* Modal Header */}
             <div className="flex items-start justify-between gap-3 pb-3 border-b border-zinc-200 dark:border-zinc-800">
               <div>
-                <span className="text-[11px] font-mono text-zinc-500 uppercase tracking-wider">
-                  Queued Post Details
+                <span className="text-[11px] font-mono uppercase tracking-wider font-semibold">
+                  {inspectingPost.status === "published" ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Published Post Details
+                    </span>
+                  ) : (
+                    <span className="text-zinc-500">Queued Post Details</span>
+                  )}
                 </span>
                 <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mt-0.5">
                   {inspectingPost.title || "Scheduled Post"}
@@ -1025,23 +1097,69 @@ export function QueuesCalendarView({
               </button>
             </div>
 
+            {/* Live Published Post Direct Action Banner */}
+            {inspectingPost.platforms.some((pl) => Boolean(pl.platformPostUrl)) && (
+              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>Live on Social Channel</span>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {inspectingPost.platforms
+                    .filter((pl) => Boolean(pl.platformPostUrl))
+                    .map((pl, idx) => {
+                      const meta = getChannelMeta(pl.platform);
+                      return (
+                        <a
+                          key={idx}
+                          href={pl.platformPostUrl!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs transition-colors cursor-pointer"
+                        >
+                          <ChannelBrandIcon platform={pl.platform} className="w-3 h-3" />
+                          <span>View on {meta.short}</span>
+                          <ExternalLink className="w-3.5 h-3.5 ml-0.5" />
+                        </a>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
             {/* Scheduled Time & Status */}
             <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-500">Scheduled Date:</span>
-                <span className="font-bold text-zinc-900 dark:text-zinc-100 font-mono">
-                  {inspectingPost.scheduledFor
-                    ? new Date(inspectingPost.scheduledFor).toLocaleString(undefined, {
-                        weekday: "short",
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : "Unscheduled"}
-                </span>
-              </div>
+              {inspectingPost.publishedAt ? (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-zinc-500">Published Date:</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                    {new Date(inspectingPost.publishedAt).toLocaleString(undefined, {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-zinc-500">Scheduled Date:</span>
+                  <span className="font-bold text-zinc-900 dark:text-zinc-100 font-mono">
+                    {inspectingPost.scheduledFor
+                      ? new Date(inspectingPost.scheduledFor).toLocaleString(undefined, {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "Unscheduled"}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center justify-between text-xs">
                 <span className="text-zinc-500">Target Account:</span>
                 <span className="font-semibold text-zinc-900 dark:text-zinc-100">
@@ -1066,6 +1184,27 @@ export function QueuesCalendarView({
               <div className="flex items-center gap-2 flex-wrap">
                 {inspectingPost.platforms.map((pl, idx) => {
                   const meta = getChannelMeta(pl.platform);
+                  if (pl.platformPostUrl) {
+                    return (
+                      <a
+                        key={idx}
+                        href={pl.platformPostUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`group text-xs font-bold px-3 py-1.5 rounded-lg shadow-2xs flex items-center gap-1.5 transition-all hover:brightness-110 hover:shadow-md cursor-pointer ${meta.badgeBg} ${meta.badgeText}`}
+                        title={`Open live post on ${meta.name}`}
+                      >
+                        <ChannelBrandIcon platform={pl.platform} className="w-3.5 h-3.5" />
+                        <span>{meta.name}</span>
+                        {pl.username && (
+                          <span className="text-[10px] opacity-80 font-mono font-normal">
+                            (@{pl.username})
+                          </span>
+                        )}
+                        <ExternalLink className="w-3.5 h-3.5 opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                      </a>
+                    );
+                  }
                   return (
                     <span
                       key={idx}

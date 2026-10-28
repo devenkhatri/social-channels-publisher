@@ -41,7 +41,7 @@ type ActivityLog = {
 
 const CHANNEL_BADGES: Record<string, string> = {
   linkedin: "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/25",
-  linkedin_page: "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/25",
+  linkedin_page: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/25",
   youtube: "bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/25",
   instagram: "bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-500/25",
   facebook: "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/25",

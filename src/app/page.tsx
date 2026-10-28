@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -93,6 +93,18 @@ export default function DashboardPage() {
   // Selection & Feedback state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Close floating batch dock / deselect on Escape key
+  useEffect(() => {
+    if (selectedIds.length === 0) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectedIds([]);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedIds.length]);
 
   // Fetch sync status
   const { data: syncStatus } = useQuery({

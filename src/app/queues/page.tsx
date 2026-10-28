@@ -27,6 +27,7 @@ import {
   Filter,
   ArrowUpDown,
   CalendarDays,
+  Building2,
 } from "lucide-react";
 import { CollapsibleCardsSection } from "@/components/ui/CollapsibleCardsSection";
 import { CollapsibleFilterSection } from "@/components/ui/CollapsibleFilterSection";
@@ -41,6 +42,9 @@ interface QueuedPostPlatform {
   profilePicture?: string | null;
   scheduledFor?: string | null;
   platformSpecificData?: Record<string, any>;
+  platformPostUrl?: string | null;
+  platformPostId?: string | null;
+  publishedAt?: string | null;
 }
 
 interface QueuedPostItem {
@@ -59,6 +63,7 @@ interface QueuedPostItem {
     type: "video" | "image" | "document" | string;
   }>;
   platforms: QueuedPostPlatform[];
+  publishedAt?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 }
@@ -334,8 +339,9 @@ export default function QueuesPage() {
   const getPlatformBadgeColor = (plat: string) => {
     switch (plat.toLowerCase()) {
       case "linkedin":
-      case "linkedin_page":
         return "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/25";
+      case "linkedin_page":
+        return "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/25";
       case "youtube":
         return "bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/25";
       case "instagram":
@@ -799,30 +805,69 @@ export default function QueuesPage() {
                     </span>
 
                     {/* Platforms */}
-                    {post.platforms.map((pl, idx) => (
-                      <span
-                        key={idx}
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${getPlatformBadgeColor(
-                          pl.platform
-                        )}`}
-                      >
-                        {pl.profilePicture && (
-                          <img
-                            src={pl.profilePicture}
-                            alt=""
-                            className="w-3.5 h-3.5 rounded-full object-cover shrink-0"
-                          />
-                        )}
-                        <span className="capitalize">
-                          {pl.platform === "linkedin_page" ? "LinkedIn Page" : pl.platform}
+                    {post.platforms.map((pl, idx) => {
+                      const badgeClasses = `inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${getPlatformBadgeColor(
+                        pl.platform
+                      )}`;
+                      const label =
+                        pl.platform === "linkedin_page"
+                          ? "LinkedIn Page"
+                          : pl.platform === "linkedin"
+                          ? "LinkedIn Personal"
+                          : pl.platform;
+
+                      if (pl.platformPostUrl) {
+                        return (
+                          <a
+                            key={idx}
+                            href={pl.platformPostUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`${badgeClasses} hover:brightness-110 hover:shadow-xs transition-all cursor-pointer`}
+                            title={`Open published post on ${label}`}
+                          >
+                            {pl.profilePicture && (
+                              <img
+                                src={pl.profilePicture}
+                                alt=""
+                                className="w-3.5 h-3.5 rounded-full object-cover shrink-0"
+                              />
+                            )}
+                            {pl.platform === "linkedin_page" && (
+                              <Building2 className="w-3 h-3 shrink-0 opacity-80" />
+                            )}
+                            <span className="capitalize">{label}</span>
+                            {pl.username && (
+                              <span className="text-[10px] opacity-75 font-mono">
+                                @{pl.username}
+                              </span>
+                            )}
+                            <ExternalLink className="w-3 h-3 opacity-75 ml-0.5" />
+                          </a>
+                        );
+                      }
+
+                      return (
+                        <span key={idx} className={badgeClasses}>
+                          {pl.profilePicture && (
+                            <img
+                              src={pl.profilePicture}
+                              alt=""
+                              className="w-3.5 h-3.5 rounded-full object-cover shrink-0"
+                            />
+                          )}
+                          {pl.platform === "linkedin_page" && (
+                            <Building2 className="w-3 h-3 shrink-0 opacity-80" />
+                          )}
+                          <span className="capitalize">{label}</span>
+                          {pl.username && (
+                            <span className="text-[10px] opacity-75 font-mono">
+                              @{pl.username}
+                            </span>
+                          )}
                         </span>
-                        {pl.username && (
-                          <span className="text-[10px] opacity-75 font-mono">
-                            @{pl.username}
-                          </span>
-                        )}
-                      </span>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {/* Schedule Countdown & Exact Time */}
@@ -1108,19 +1153,46 @@ export default function QueuesPage() {
 
                       {/* Platforms */}
                       <td className="py-3 px-4">
-                        <div className="flex items-center gap-1 flex-wrap">
-                          {post.platforms.map((pl, idx) => (
-                            <span
-                              key={idx}
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${getPlatformBadgeColor(
-                                pl.platform
-                              )}`}
-                            >
-                              <span className="capitalize">
-                                {pl.platform === "linkedin_page" ? "LI Page" : pl.platform}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {post.platforms.map((pl, idx) => {
+                            const badgeClasses = `inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${getPlatformBadgeColor(
+                              pl.platform
+                            )}`;
+                            const label =
+                              pl.platform === "linkedin_page"
+                                ? "LI Page"
+                                : pl.platform === "linkedin"
+                                ? "LI Personal"
+                                : pl.platform;
+
+                            if (pl.platformPostUrl) {
+                              return (
+                                <a
+                                  key={idx}
+                                  href={pl.platformPostUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`${badgeClasses} hover:brightness-110 transition-all cursor-pointer`}
+                                  title={`Open published post on ${label}`}
+                                >
+                                  {pl.platform === "linkedin_page" && (
+                                    <Building2 className="w-2.5 h-2.5 shrink-0" />
+                                  )}
+                                  <span className="capitalize">{label}</span>
+                                  <ExternalLink className="w-2.5 h-2.5 opacity-75" />
+                                </a>
+                              );
+                            }
+
+                            return (
+                              <span key={idx} className={badgeClasses}>
+                                {pl.platform === "linkedin_page" && (
+                                  <Building2 className="w-2.5 h-2.5 shrink-0" />
+                                )}
+                                <span className="capitalize">{label}</span>
                               </span>
-                            </span>
-                          ))}
+                            );
+                          })}
                         </div>
                       </td>
 
