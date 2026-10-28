@@ -18,7 +18,8 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/api/auth/login") ||
     pathname === "/auth/login" ||
     pathname === "/auth/microsoft/callback" ||
-    pathname === "/favicon.ico"
+    pathname === "/favicon.ico" ||
+    pathname.startsWith("/manifest")
   ) {
     // If user is already logged in and tries to go to login page, redirect to home
     if (pathname === "/auth/login") {
