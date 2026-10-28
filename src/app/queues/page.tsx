@@ -26,7 +26,12 @@ import {
   LayoutGrid,
   Filter,
   ArrowUpDown,
+  CalendarDays,
 } from "lucide-react";
+import { CollapsibleCardsSection } from "@/components/ui/CollapsibleCardsSection";
+import { CollapsibleFilterSection } from "@/components/ui/CollapsibleFilterSection";
+import { QueuesCalendarView } from "@/components/queues/QueuesCalendarView";
+
 
 interface QueuedPostPlatform {
   platform: string;
@@ -83,7 +88,7 @@ export default function QueuesPage() {
   const [selectedPlatform, setSelectedPlatform] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [viewMode, setViewMode] = useState<"cards" | "table">("table");
+  const [viewMode, setViewMode] = useState<"cards" | "table" | "calendar">("table");
   const [expandedPostIds, setExpandedPostIds] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
@@ -448,207 +453,255 @@ export default function QueuesPage() {
       </div>
 
       {/* KPI Overview Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Total Queued */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
-            <span className="font-medium">Total Queued</span>
-            <Clock className="w-4 h-4 text-amber-500" />
+      <CollapsibleCardsSection
+        title="Overview Cards"
+        icon={CalendarClock}
+        summary={`${data?.totalQueued ?? 0} posts queued • ${allPlatforms.length} active channels`}
+        badge={
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+            4 cards
+          </span>
+        }
+      >
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {/* Total Queued */}
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
+            <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+              <span className="font-medium">Total Queued</span>
+              <Clock className="w-4 h-4 text-amber-500" />
+            </div>
+            <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+              {isLoading ? "..." : data?.totalQueued ?? 0}
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-0.5">Posts waiting in queue</p>
           </div>
-          <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-            {isLoading ? "..." : data?.totalQueued ?? 0}
+
+          {/* Configured Accounts */}
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
+            <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+              <span className="font-medium">Zernio Accounts</span>
+              <KeyRound className="w-4 h-4 text-sky-500" />
+            </div>
+            <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+              {isLoading ? "..." : data?.accounts.length ?? 0}
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-0.5">Configured publishing keys</p>
           </div>
-          <p className="text-[11px] text-zinc-400 mt-0.5">Posts waiting in queue</p>
+
+          {/* Active Platforms */}
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
+            <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+              <span className="font-medium">Active Channels</span>
+              <Layers className="w-4 h-4 text-emerald-500" />
+            </div>
+            <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+              {isLoading ? "..." : allPlatforms.length}
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-0.5">Scheduled platforms</p>
+          </div>
+
+          {/* Next Scheduled */}
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
+            <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+              <span className="font-medium">Next Post</span>
+              <CalendarClock className="w-4 h-4 text-indigo-500" />
+            </div>
+            <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
+              {isLoading
+                ? "..."
+                : data?.nextScheduledAt
+                ? getRelativeTime(data.nextScheduledAt)
+                : "None scheduled"}
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-0.5 truncate">
+              {data?.nextScheduledAt ? formatScheduleDate(data.nextScheduledAt) : "Queue is empty"}
+            </p>
+          </div>
         </div>
+      </CollapsibleCardsSection>
 
-        {/* Configured Accounts */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
-            <span className="font-medium">Zernio Accounts</span>
-            <KeyRound className="w-4 h-4 text-sky-500" />
-          </div>
-          <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-            {isLoading ? "..." : data?.accounts.length ?? 0}
-          </div>
-          <p className="text-[11px] text-zinc-400 mt-0.5">Configured publishing keys</p>
-        </div>
-
-        {/* Active Platforms */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
-            <span className="font-medium">Active Channels</span>
-            <Layers className="w-4 h-4 text-emerald-500" />
-          </div>
-          <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-            {isLoading ? "..." : allPlatforms.length}
-          </div>
-          <p className="text-[11px] text-zinc-400 mt-0.5">Scheduled platforms</p>
-        </div>
-
-        {/* Next Scheduled */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
-            <span className="font-medium">Next Post</span>
-            <CalendarClock className="w-4 h-4 text-indigo-500" />
-          </div>
-          <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
-            {isLoading
-              ? "..."
-              : data?.nextScheduledAt
-              ? getRelativeTime(data.nextScheduledAt)
-              : "None scheduled"}
-          </div>
-          <p className="text-[11px] text-zinc-400 mt-0.5 truncate">
-            {data?.nextScheduledAt ? formatScheduleDate(data.nextScheduledAt) : "Queue is empty"}
-          </p>
-        </div>
-      </div>
-
-      {/* Account Switcher Tabs */}
-      {data?.accounts && data.accounts.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          <button
-            onClick={() => setSelectedAccountId("all")}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
-              selectedAccountId === "all"
-                ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs"
-                : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100"
-            }`}
-          >
-            <span>All Accounts</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                selectedAccountId === "all"
-                  ? "bg-zinc-800 text-zinc-200 dark:bg-zinc-200 dark:text-zinc-800"
-                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
-              }`}
-            >
-              {data.totalQueued}
-            </span>
-          </button>
-
-          {data.accounts.map((acc) => {
-            const isSelected = selectedAccountId === acc.accountId;
-            return (
+      {/* Account Switcher Tabs & Filter Toolbar inside CollapsibleFilterSection */}
+      <CollapsibleFilterSection
+        title="Queue Filters & Accounts"
+        activeFiltersCount={
+          (selectedAccountId !== "all" ? 1 : 0) +
+          (selectedPlatform !== "all" ? 1 : 0) +
+          (selectedStatus !== "all" ? 1 : 0) +
+          (searchQuery.trim() ? 1 : 0)
+        }
+        activeFiltersSummary={`${
+          selectedAccountId !== "all"
+            ? data?.accounts.find((a) => a.accountId === selectedAccountId)?.accountName || "Account"
+            : "All Accounts"
+        } • ${selectedPlatform !== "all" ? selectedPlatform : "All Platforms"} • ${
+          selectedStatus !== "all" ? selectedStatus : "All Statuses"
+        }${searchQuery.trim() ? ` • "${searchQuery}"` : ""}`}
+        onClearFilters={() => {
+          setSelectedAccountId("all");
+          setSelectedPlatform("all");
+          setSelectedStatus("all");
+          setSearchQuery("");
+        }}
+      >
+        <div className="space-y-3">
+          {/* Account Switcher Tabs */}
+          {data?.accounts && data.accounts.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
               <button
-                key={acc.accountId}
-                onClick={() => setSelectedAccountId(acc.accountId)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all border ${
-                  isSelected
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs font-semibold"
+                onClick={() => setSelectedAccountId("all")}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
+                  selectedAccountId === "all"
+                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs"
                     : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100"
                 }`}
               >
-                <span>{acc.accountName}</span>
+                <span>All Accounts</span>
                 <span
                   className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                    isSelected
+                    selectedAccountId === "all"
                       ? "bg-zinc-800 text-zinc-200 dark:bg-zinc-200 dark:text-zinc-800"
                       : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
                   }`}
                 >
-                  {acc.totalQueued}
+                  {data.totalQueued}
                 </span>
               </button>
-            );
-          })}
+
+              {data.accounts.map((acc) => {
+                const isSelected = selectedAccountId === acc.accountId;
+                return (
+                  <button
+                    key={acc.accountId}
+                    onClick={() => setSelectedAccountId(acc.accountId)}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all border ${
+                      isSelected
+                        ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs font-semibold"
+                        : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100"
+                    }`}
+                  >
+                    <span>{acc.accountName}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                        isSelected
+                          ? "bg-zinc-800 text-zinc-200 dark:bg-zinc-200 dark:text-zinc-800"
+                          : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
+                      }`}
+                    >
+                      {acc.totalQueued}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Filter Toolbar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-3 shadow-xs">
+            {/* Left: Platform filter & Search */}
+            <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+              <div className="relative flex-1 sm:max-w-xs min-w-[200px]">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search posts, handles, topics..."
+                  className="w-full pl-9 pr-4 py-2 text-xs bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600"
+                />
+              </div>
+
+              {/* Platform filter pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1">
+                <button
+                  onClick={() => setSelectedPlatform("all")}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    selectedPlatform === "all"
+                      ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold"
+                      : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  All Platforms
+                </button>
+                {allPlatforms.map((plat) => (
+                  <button
+                    key={plat}
+                    onClick={() => setSelectedPlatform(plat)}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${
+                      selectedPlatform === plat
+                        ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold"
+                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
+                    }`}
+                  >
+                    {plat === "linkedin_page" ? "LinkedIn Page" : plat}
+                  </button>
+                ))}
+              </div>
+
+              {/* Status filter dropdown / pills */}
+              <div className="flex items-center gap-1.5 pl-2 border-l border-zinc-200 dark:border-zinc-800 py-1 shrink-0 whitespace-nowrap">
+                <span className="text-[11px] text-zinc-400 font-medium inline-flex items-center gap-1 shrink-0 whitespace-nowrap">
+                  <Filter className="w-3 h-3 shrink-0" />
+                  <span>Status:</span>
+                </span>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-400 capitalize cursor-pointer shrink-0"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="published">Published</option>
+                  <option value="draft">Draft</option>
+                  <option value="failed">Failed</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Right: View mode & Count */}
+            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+              <span className="text-xs text-zinc-500 font-mono hidden sm:inline">
+                Showing {filteredPosts.length} of {data?.totalQueued ?? 0}
+              </span>
+
+              <div className="flex items-center bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl border border-zinc-200 dark:border-zinc-700/60">
+                <button
+                  onClick={() => setViewMode("table")}
+                  title="Compact List View"
+                  className={`p-1.5 rounded-lg transition-all ${
+                    viewMode === "table"
+                      ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
+                      : "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  <LayoutList className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode("cards")}
+                  title="Timeline Cards View"
+                  className={`p-1.5 rounded-lg transition-all ${
+                    viewMode === "cards"
+                      ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
+                      : "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode("calendar")}
+                  title="Calendar Schedule View"
+                  className={`p-1.5 rounded-lg transition-all ${
+                    viewMode === "calendar"
+                      ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
+                      : "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  <CalendarDays className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      )}
-
-      {/* Filter Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-3 shadow-xs">
-        {/* Left: Platform filter & Search */}
-        <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
-          <div className="relative flex-1 sm:max-w-xs min-w-[200px]">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search posts, handles, topics..."
-              className="w-full pl-9 pr-4 py-2 text-xs bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600"
-            />
-          </div>
-
-          {/* Platform filter pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1">
-            <button
-              onClick={() => setSelectedPlatform("all")}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                selectedPlatform === "all"
-                  ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold"
-                  : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
-              }`}
-            >
-              All Platforms
-            </button>
-            {allPlatforms.map((plat) => (
-              <button
-                key={plat}
-                onClick={() => setSelectedPlatform(plat)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${
-                  selectedPlatform === plat
-                    ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold"
-                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
-                }`}
-              >
-                {plat === "linkedin_page" ? "LinkedIn Page" : plat}
-              </button>
-            ))}
-          </div>
-
-          {/* Status filter dropdown / pills */}
-          <div className="flex items-center gap-1.5 pl-2 border-l border-zinc-200 dark:border-zinc-800 py-1 shrink-0 whitespace-nowrap">
-            <span className="text-[11px] text-zinc-400 font-medium inline-flex items-center gap-1 shrink-0 whitespace-nowrap">
-              <Filter className="w-3 h-3 shrink-0" />
-              <span>Status:</span>
-            </span>
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-400 capitalize cursor-pointer shrink-0"
-            >
-              <option value="all">All Statuses</option>
-              <option value="scheduled">Scheduled</option>
-              <option value="published">Published</option>
-              <option value="draft">Draft</option>
-              <option value="failed">Failed</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Right: View mode & Count */}
-        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-          <span className="text-xs text-zinc-500 font-mono hidden sm:inline">
-            Showing {filteredPosts.length} of {data?.totalQueued ?? 0}
-          </span>
-
-          <div className="flex items-center bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl border border-zinc-200 dark:border-zinc-700/60">
-            <button
-              onClick={() => setViewMode("table")}
-              title="Compact List View"
-              className={`p-1.5 rounded-lg transition-all ${
-                viewMode === "table"
-                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
-                  : "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
-              }`}
-            >
-              <LayoutList className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("cards")}
-              title="Timeline Cards View"
-              className={`p-1.5 rounded-lg transition-all ${
-                viewMode === "cards"
-                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
-                  : "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
-              }`}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
+      </CollapsibleFilterSection>
 
       {/* Main Content Area */}
       {isLoading ? (
@@ -693,6 +746,27 @@ export default function QueuesPage() {
             )}
           </div>
         </div>
+      ) : viewMode === "calendar" ? (
+        /* CALENDAR VIEW */
+        <QueuesCalendarView
+          posts={filteredPosts}
+          onDeletePost={(post) => {
+            if (
+              confirm(
+                `Remove "${post.title}" from queue?`
+              )
+            ) {
+              deleteMutation.mutate({
+                postId: post.postId,
+                accountId: post.accountId,
+              });
+            }
+          }}
+          isDeleting={deleteMutation.isPending}
+          deletingPostId={deleteMutation.variables?.postId}
+          getStatusBadge={getStatusBadge}
+          getPlatformBadgeColor={getPlatformBadgeColor}
+        />
       ) : viewMode === "cards" ? (
         /* CARDS / TIMELINE VIEW */
         <div className="space-y-4">

@@ -17,6 +17,7 @@ import {
   Layers,
   FolderOpen,
 } from "lucide-react";
+import { CollapsibleCard } from "@/components/ui/CollapsibleCard";
 
 interface Connection {
   id: string;
@@ -409,38 +410,32 @@ export default function ZernioSettingsPage() {
             );
 
             return (
-              <div
+              <CollapsibleCard
                 key={acc.id}
-                className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-2xl p-5 sm:p-6 shadow-sm dark:shadow-xl space-y-5 transition-all"
-              >
-                {/* Account Top Row */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-zinc-200 dark:border-zinc-800">
-                  <div>
-                    <div className="flex items-center gap-2.5 flex-wrap">
-                      <h4 className="text-base font-bold text-zinc-900 dark:text-zinc-100">{acc.name}</h4>
-                      <span className="font-mono text-[11px] px-2.5 py-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
-                        {acc.maskedApiKey}
+                title={acc.name}
+                badge={
+                  <span className="font-mono text-[11px] px-2.5 py-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                    {acc.maskedApiKey}
+                  </span>
+                }
+                subtitle={
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                      Channels:
+                    </span>
+                    {acc.availableChannels && acc.availableChannels.length > 0 ? (
+                      acc.availableChannels.map((ch) => (
+                        <span key={ch}>{renderPlatformBadge(ch)}</span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-zinc-500 italic">
+                        No active channel connections
                       </span>
-                    </div>
-
-                    {/* Channels Overview Badges */}
-                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
-                        Available Channels:
-                      </span>
-                      {acc.availableChannels && acc.availableChannels.length > 0 ? (
-                        acc.availableChannels.map((ch) => (
-                          <div key={ch}>{renderPlatformBadge(ch)}</div>
-                        ))
-                      ) : (
-                        <span className="text-xs text-zinc-500 italic">
-                          No active channel connections discovered
-                        </span>
-                      )}
-                    </div>
+                    )}
                   </div>
-
-                  <div className="flex items-center gap-2 self-start sm:self-center">
+                }
+                headerActions={
+                  <div className="flex items-center gap-2">
                     <button
                       onClick={() => refreshProfiles(acc.id)}
                       disabled={refreshingId === acc.id}
@@ -450,7 +445,7 @@ export default function ZernioSettingsPage() {
                       <RefreshCw
                         className={`w-3.5 h-3.5 ${refreshingId === acc.id ? "animate-spin text-zinc-900 dark:text-zinc-100" : ""}`}
                       />
-                      <span>Refresh Profiles</span>
+                      <span className="hidden sm:inline">Refresh Profiles</span>
                     </button>
 
                     <button
@@ -465,7 +460,8 @@ export default function ZernioSettingsPage() {
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
-                </div>
+                }
+              >
 
                 {/* Profiles & Active Connections */}
                 <div className="space-y-4">
@@ -627,18 +623,18 @@ export default function ZernioSettingsPage() {
                     ))
                   )}
                 </div>
-              </div>
+              </CollapsibleCard>
             );
           })
         )}
       </div>
 
       {/* Security Info Card */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 space-y-2">
-        <div className="flex items-center gap-2 text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-          <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          <span>Zero-Knowledge AES-256-GCM Storage</span>
-        </div>
+      <CollapsibleCard
+        title="Zero-Knowledge AES-256-GCM Storage"
+        icon={Shield}
+        subtitle="End-to-end encrypted API credentials storage"
+      >
         <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
           Your Zernio API keys are encrypted at rest with hardware-accelerated AES-256-GCM using your application secret. Keys are decrypted strictly on the server-side during publishing execution and are never leaked to client browsers.
         </p>
@@ -653,7 +649,7 @@ export default function ZernioSettingsPage() {
             <ExternalLink className="w-3 h-3" />
           </a>
         </div>
-      </div>
+      </CollapsibleCard>
     </div>
   );
 }

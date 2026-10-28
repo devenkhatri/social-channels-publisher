@@ -28,6 +28,9 @@ import {
   ChevronRight,
   Filter,
 } from "lucide-react";
+import { CollapsibleCardsSection } from "@/components/ui/CollapsibleCardsSection";
+import { CollapsibleFilterSection } from "@/components/ui/CollapsibleFilterSection";
+
 
 type ContentItem = {
   id: string;
@@ -225,7 +228,45 @@ export default function DashboardPage() {
     return { total, unpublished, inProgress, published };
   }, [rawItems]);
 
+  // Active filters count & summary for mobile collapsible filter section
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (statusFilter !== "all") count++;
+    if (channelFilter !== "all") count++;
+    if (search.trim()) count++;
+    if (sortOrder !== "newest") count++;
+    return count;
+  }, [statusFilter, channelFilter, search, sortOrder]);
+
+  const activeFiltersSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (statusFilter !== "all") {
+      parts.push(
+        statusFilter === "unpublished"
+          ? "Pending"
+          : statusFilter === "in_progress"
+          ? "In Progress"
+          : "Published"
+      );
+    }
+    if (channelFilter !== "all") {
+      const chName = CHANNELS.find((c) => c.id === channelFilter)?.name || channelFilter;
+      parts.push(chName);
+    }
+    if (search.trim()) parts.push(`"${search.trim()}"`);
+    return parts.join(" • ") || "Default filters";
+  }, [statusFilter, channelFilter, search]);
+
+  const handleResetFilters = () => {
+    setStatusFilter("all");
+    setChannelFilter("all");
+    setSearch("");
+    setSortOrder("newest");
+    setCurrentPage(1);
+  };
+
   // Comprehensive Filtering and Sorting logic
+
   const filteredItems = useMemo(() => {
     return rawItems
       .filter((item) => {
@@ -426,293 +467,311 @@ export default function DashboardPage() {
       </div>
 
       {/* Analytics KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        {/* Unpublished (Pending) Card */}
-        <div
-          onClick={() => {
-            setStatusFilter("unpublished");
-            setCurrentPage(1);
-          }}
-          className={`cursor-pointer p-4 rounded-2xl border transition-all ${
-            statusFilter === "unpublished"
-              ? "bg-amber-500/10 border-amber-500/40 ring-1 ring-amber-500/30"
-              : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs"
-          }`}
-        >
-          <div className="flex items-center justify-between text-xs text-amber-600 dark:text-amber-400 font-medium">
-            <span>Pending Folders</span>
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
+      <CollapsibleCardsSection
+        title="Overview Cards"
+        icon={Layers}
+        summary={`${summaryCounts.unpublished} pending • ${summaryCounts.total} total`}
+        badge={
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+            4 cards
+          </span>
+        }
+      >
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          {/* Unpublished (Pending) Card */}
+          <div
+            onClick={() => {
+              setStatusFilter("unpublished");
+              setCurrentPage(1);
+            }}
+            className={`cursor-pointer p-4 rounded-2xl border transition-all ${
+              statusFilter === "unpublished"
+                ? "bg-amber-500/10 border-amber-500/40 ring-1 ring-amber-500/30"
+                : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs"
+            }`}
+          >
+            <div className="flex items-center justify-between text-xs text-amber-600 dark:text-amber-400 font-medium">
+              <span>Pending Folders</span>
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100 mt-2">
+              {summaryCounts.unpublished}
+            </p>
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 truncate">
+              Folders pending publication
+            </p>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100 mt-2">
-            {summaryCounts.unpublished}
-          </p>
-          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 truncate">
-            Folders pending publication
-          </p>
-        </div>
 
-        {/* In-Progress Card */}
-        <div
-          onClick={() => {
-            setStatusFilter("in_progress");
-            setCurrentPage(1);
-          }}
-          className={`cursor-pointer p-4 rounded-2xl border transition-all ${
-            statusFilter === "in_progress"
-              ? "bg-sky-500/10 border-sky-500/40 ring-1 ring-sky-500/30"
-              : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs"
-          }`}
-        >
-          <div className="flex items-center justify-between text-xs text-sky-600 dark:text-sky-400 font-medium">
-            <span>In Progress (1-6)</span>
-            <Send className="w-3.5 h-3.5 text-sky-500" />
+          {/* In-Progress Card */}
+          <div
+            onClick={() => {
+              setStatusFilter("in_progress");
+              setCurrentPage(1);
+            }}
+            className={`cursor-pointer p-4 rounded-2xl border transition-all ${
+              statusFilter === "in_progress"
+                ? "bg-sky-500/10 border-sky-500/40 ring-1 ring-sky-500/30"
+                : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs"
+            }`}
+          >
+            <div className="flex items-center justify-between text-xs text-sky-600 dark:text-sky-400 font-medium">
+              <span>In Progress (1-6)</span>
+              <Send className="w-3.5 h-3.5 text-sky-500" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100 mt-2">
+              {summaryCounts.inProgress}
+            </p>
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 truncate">
+              Partially published channels
+            </p>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100 mt-2">
-            {summaryCounts.inProgress}
-          </p>
-          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 truncate">
-            Partially published channels
-          </p>
-        </div>
 
-        {/* Published Card */}
-        <div
-          onClick={() => {
-            setStatusFilter("published");
-            setCurrentPage(1);
-          }}
-          className={`cursor-pointer p-4 rounded-2xl border transition-all ${
-            statusFilter === "published"
-              ? "bg-emerald-500/10 border-emerald-500/40 ring-1 ring-emerald-500/30"
-              : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs"
-          }`}
-        >
-          <div className="flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-            <span>Published (-Done)</span>
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+          {/* Published Card */}
+          <div
+            onClick={() => {
+              setStatusFilter("published");
+              setCurrentPage(1);
+            }}
+            className={`cursor-pointer p-4 rounded-2xl border transition-all ${
+              statusFilter === "published"
+                ? "bg-emerald-500/10 border-emerald-500/40 ring-1 ring-emerald-500/30"
+                : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs"
+            }`}
+          >
+            <div className="flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+              <span>Published (-Done)</span>
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100 mt-2">
+              {summaryCounts.published}
+            </p>
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 truncate">
+              Marked with <code className="text-zinc-600 dark:text-zinc-300">-Done</code>
+            </p>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100 mt-2">
-            {summaryCounts.published}
-          </p>
-          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 truncate">
-            Marked with <code className="text-zinc-600 dark:text-zinc-300">-Done</code>
-          </p>
-        </div>
 
-        {/* Total Folders Card */}
-        <div
-          onClick={() => {
-            setStatusFilter("all");
-            setCurrentPage(1);
-          }}
-          className={`cursor-pointer p-4 rounded-2xl border transition-all ${
-            statusFilter === "all"
-              ? "bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 ring-1 ring-zinc-400/30"
-              : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs"
-          }`}
-        >
-          <div className="flex items-center justify-between text-xs text-zinc-700 dark:text-zinc-300 font-medium">
-            <span>All Folders</span>
-            <Folder className="w-3.5 h-3.5 text-zinc-500" />
+          {/* Total Folders Card */}
+          <div
+            onClick={() => {
+              setStatusFilter("all");
+              setCurrentPage(1);
+            }}
+            className={`cursor-pointer p-4 rounded-2xl border transition-all ${
+              statusFilter === "all"
+                ? "bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 ring-1 ring-zinc-400/30"
+                : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs"
+            }`}
+          >
+            <div className="flex items-center justify-between text-xs text-zinc-700 dark:text-zinc-300 font-medium">
+              <span>All Folders</span>
+              <Folder className="w-3.5 h-3.5 text-zinc-500" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100 mt-2">
+              {summaryCounts.total}
+            </p>
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 truncate">
+              Total synced content units
+            </p>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100 mt-2">
-            {summaryCounts.total}
-          </p>
-          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 truncate">
-            Total synced content units
-          </p>
         </div>
-      </div>
+      </CollapsibleCardsSection>
 
       {/* Filter Tabs & Search & View Controls */}
-      <div className="space-y-3 pt-2">
-        {/* Status Filter Pills */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="inline-flex p-1 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 text-xs font-medium max-w-full overflow-x-auto">
-            <button
-              onClick={() => {
-                setStatusFilter("unpublished");
-                setCurrentPage(1);
-              }}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
-                statusFilter === "unpublished"
-                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
-                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-              }`}
-            >
-              Pending ({summaryCounts.unpublished})
-            </button>
-            <button
-              onClick={() => {
-                setStatusFilter("in_progress");
-                setCurrentPage(1);
-              }}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
-                statusFilter === "in_progress"
-                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
-                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-              }`}
-            >
-              In Progress ({summaryCounts.inProgress})
-            </button>
-            <button
-              onClick={() => {
-                setStatusFilter("published");
-                setCurrentPage(1);
-              }}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
-                statusFilter === "published"
-                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
-                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-              }`}
-            >
-              Published ({summaryCounts.published})
-            </button>
-            <button
-              onClick={() => {
-                setStatusFilter("all");
-                setCurrentPage(1);
-              }}
-              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
-                statusFilter === "all"
-                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
-                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-              }`}
-            >
-              All ({summaryCounts.total})
-            </button>
-          </div>
-
-          {/* View mode toggle (Table/List vs Grid) */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60">
-            <button
-              onClick={() => setViewMode("table")}
-              title="Table / List View"
-              className={`p-1.5 rounded-lg transition-all ${
-                viewMode === "table"
-                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
-                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-              }`}
-            >
-              <List className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("grid")}
-              title="Grid View"
-              className={`p-1.5 rounded-lg transition-all ${
-                viewMode === "grid"
-                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
-                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-              }`}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Search, Channel Dropdown, and Sort Controls */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pt-1">
-          {/* Search bar */}
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setCurrentPage(1);
-              }}
-              placeholder="Search title or folder..."
-              className="w-full pl-9 pr-8 py-2 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all"
-            />
-            {search && (
+      <CollapsibleFilterSection
+        title="Filters & Sorting"
+        activeFiltersCount={activeFiltersCount}
+        activeFiltersSummary={activeFiltersSummary}
+        onClearFilters={handleResetFilters}
+      >
+        <div className="space-y-3 pt-1">
+          {/* Status Filter Pills */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="inline-flex p-1 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 text-xs font-medium max-w-full overflow-x-auto">
               <button
-                onClick={() => setSearch("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                onClick={() => {
+                  setStatusFilter("unpublished");
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
+                  statusFilter === "unpublished"
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                }`}
               >
-                <X className="w-3.5 h-3.5" />
+                Pending ({summaryCounts.unpublished})
               </button>
-            )}
+              <button
+                onClick={() => {
+                  setStatusFilter("in_progress");
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
+                  statusFilter === "in_progress"
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                }`}
+              >
+                In Progress ({summaryCounts.inProgress})
+              </button>
+              <button
+                onClick={() => {
+                  setStatusFilter("published");
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
+                  statusFilter === "published"
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                }`}
+              >
+                Published ({summaryCounts.published})
+              </button>
+              <button
+                onClick={() => {
+                  setStatusFilter("all");
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
+                  statusFilter === "all"
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                }`}
+              >
+                All ({summaryCounts.total})
+              </button>
+            </div>
+
+            {/* View mode toggle (Table/List vs Grid) */}
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60">
+              <button
+                onClick={() => setViewMode("table")}
+                title="Table / List View"
+                className={`p-1.5 rounded-lg transition-all ${
+                  viewMode === "table"
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
+                    : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                }`}
+              >
+                <List className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("grid")}
+                title="Grid View"
+                className={`p-1.5 rounded-lg transition-all ${
+                  viewMode === "grid"
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
+                    : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                }`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
-          {/* Channel Filter Dropdown */}
-          <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2">
-            <Filter className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-            <select
-              value={channelFilter}
-              onChange={(e) => {
-                setChannelFilter(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full bg-transparent text-zinc-900 dark:text-zinc-100 focus:outline-none text-xs cursor-pointer truncate"
-            >
-              {CHANNELS.map((ch) => (
-                <option key={ch.id} value={ch.id} className="bg-white dark:bg-zinc-900">
-                  {ch.name}
+          {/* Search, Channel Dropdown, and Sort Controls */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pt-1">
+            {/* Search bar */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Search title or folder..."
+                className="w-full pl-9 pr-8 py-2 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Channel Filter Dropdown */}
+            <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2">
+              <Filter className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+              <select
+                value={channelFilter}
+                onChange={(e) => {
+                  setChannelFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full bg-transparent text-zinc-900 dark:text-zinc-100 focus:outline-none text-xs cursor-pointer truncate"
+              >
+                {CHANNELS.map((ch) => (
+                  <option key={ch.id} value={ch.id} className="bg-white dark:bg-zinc-900">
+                    {ch.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Sort Order Dropdown */}
+            <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+              <select
+                value={sortOrder}
+                onChange={(e: any) => setSortOrder(e.target.value)}
+                className="w-full bg-transparent text-zinc-900 dark:text-zinc-100 focus:outline-none text-xs cursor-pointer truncate"
+              >
+                <option value="newest" className="bg-white dark:bg-zinc-900">
+                  Newest Date
                 </option>
-              ))}
-            </select>
-          </div>
+                <option value="oldest" className="bg-white dark:bg-zinc-900">
+                  Oldest Date
+                </option>
+                <option value="title_asc" className="bg-white dark:bg-zinc-900">
+                  Title (A to Z)
+                </option>
+                <option value="title_desc" className="bg-white dark:bg-zinc-900">
+                  Title (Z to A)
+                </option>
+                <option value="most_published" className="bg-white dark:bg-zinc-900">
+                  Most Published
+                </option>
+                <option value="least_published" className="bg-white dark:bg-zinc-900">
+                  Most Pending
+                </option>
+                <option value="slides_desc" className="bg-white dark:bg-zinc-900">
+                  Most Slides
+                </option>
+              </select>
+            </div>
 
-          {/* Sort Order Dropdown */}
-          <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2">
-            <SlidersHorizontal className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-            <select
-              value={sortOrder}
-              onChange={(e: any) => setSortOrder(e.target.value)}
-              className="w-full bg-transparent text-zinc-900 dark:text-zinc-100 focus:outline-none text-xs cursor-pointer truncate"
-            >
-              <option value="newest" className="bg-white dark:bg-zinc-900">
-                Newest Date
-              </option>
-              <option value="oldest" className="bg-white dark:bg-zinc-900">
-                Oldest Date
-              </option>
-              <option value="title_asc" className="bg-white dark:bg-zinc-900">
-                Title (A to Z)
-              </option>
-              <option value="title_desc" className="bg-white dark:bg-zinc-900">
-                Title (Z to A)
-              </option>
-              <option value="most_published" className="bg-white dark:bg-zinc-900">
-                Most Published
-              </option>
-              <option value="least_published" className="bg-white dark:bg-zinc-900">
-                Most Pending
-              </option>
-              <option value="slides_desc" className="bg-white dark:bg-zinc-900">
-                Most Slides
-              </option>
-            </select>
-          </div>
-
-          {/* Page Size Selector */}
-          <div className="flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2">
-            <span className="text-[11px] text-zinc-500 whitespace-nowrap">Per page:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              className="bg-transparent text-zinc-900 dark:text-zinc-100 focus:outline-none text-xs cursor-pointer ml-2"
-            >
-              <option value={12} className="bg-white dark:bg-zinc-900">
-                12
-              </option>
-              <option value={24} className="bg-white dark:bg-zinc-900">
-                24
-              </option>
-              <option value={48} className="bg-white dark:bg-zinc-900">
-                48
-              </option>
-              <option value={0} className="bg-white dark:bg-zinc-900">
-                All ({filteredItems.length})
-              </option>
-            </select>
+            {/* Page Size Selector */}
+            <div className="flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2">
+              <span className="text-[11px] text-zinc-500 whitespace-nowrap">Per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-transparent text-zinc-900 dark:text-zinc-100 focus:outline-none text-xs cursor-pointer ml-2"
+              >
+                <option value={12} className="bg-white dark:bg-zinc-900">
+                  12
+                </option>
+                <option value={24} className="bg-white dark:bg-zinc-900">
+                  24
+                </option>
+                <option value={48} className="bg-white dark:bg-zinc-900">
+                  48
+                </option>
+                <option value={0} className="bg-white dark:bg-zinc-900">
+                  All ({filteredItems.length})
+                </option>
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+      </CollapsibleFilterSection>
 
       {/* Select All / Batch Options Toolbar */}
       {!isLoading && filteredItems.length > 0 && (

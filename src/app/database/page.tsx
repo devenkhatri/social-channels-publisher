@@ -27,6 +27,9 @@ import {
   AlertCircle,
   ExternalLink,
 } from "lucide-react";
+import { CollapsibleCardsSection } from "@/components/ui/CollapsibleCardsSection";
+import { CollapsibleFilterSection } from "@/components/ui/CollapsibleFilterSection";
+
 
 interface ColumnInfo {
   cid: number;
@@ -300,157 +303,184 @@ export default function DatabasePage() {
       </div>
 
       {/* Top Stats Overview */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
-            <span className="font-medium">Total Tables</span>
-            <TableIcon className="w-4 h-4 text-emerald-500" />
+      <CollapsibleCardsSection
+        title="Overview Cards"
+        icon={Database}
+        summary={`${data?.tables?.length ?? 0} tables • ${totalAllRows.toLocaleString()} total rows`}
+        badge={
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+            4 cards
+          </span>
+        }
+      >
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
+            <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+              <span className="font-medium">Total Tables</span>
+              <TableIcon className="w-4 h-4 text-emerald-500" />
+            </div>
+            <div className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+              {isLoading ? "..." : data?.tables?.length ?? 0}
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-0.5">SQLite schema tables</p>
           </div>
-          <div className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            {isLoading ? "..." : data?.tables?.length ?? 0}
-          </div>
-          <p className="text-[11px] text-zinc-400 mt-0.5">SQLite schema tables</p>
-        </div>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
-            <span className="font-medium">Total Rows</span>
-            <Layers className="w-4 h-4 text-blue-500" />
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
+            <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+              <span className="font-medium">Total Rows</span>
+              <Layers className="w-4 h-4 text-blue-500" />
+            </div>
+            <div className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+              {isLoading ? "..." : totalAllRows.toLocaleString()}
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-0.5">Across all tables</p>
           </div>
-          <div className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            {isLoading ? "..." : totalAllRows.toLocaleString()}
-          </div>
-          <p className="text-[11px] text-zinc-400 mt-0.5">Across all tables</p>
-        </div>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
-            <span className="font-medium">Active Table</span>
-            <Database className="w-4 h-4 text-indigo-500" />
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
+            <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+              <span className="font-medium">Active Table</span>
+              <Database className="w-4 h-4 text-indigo-500" />
+            </div>
+            <div className="text-sm font-bold tracking-tight text-zinc-900 dark:text-zinc-100 truncate">
+              {activeTable || "None"}
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-0.5">
+              {data?.columns?.length ?? 0} columns defined
+            </p>
           </div>
-          <div className="text-sm font-bold tracking-tight text-zinc-900 dark:text-zinc-100 truncate">
-            {activeTable || "None"}
-          </div>
-          <p className="text-[11px] text-zinc-400 mt-0.5">
-            {data?.columns?.length ?? 0} columns defined
-          </p>
-        </div>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
-            <span className="font-medium">Filtered Rows</span>
-            <Hash className="w-4 h-4 text-amber-500" />
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
+            <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+              <span className="font-medium">Filtered Rows</span>
+              <Hash className="w-4 h-4 text-amber-500" />
+            </div>
+            <div className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+              {isLoading ? "..." : data?.totalRows?.toLocaleString() ?? 0}
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-0.5">In current view</p>
           </div>
-          <div className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            {isLoading ? "..." : data?.totalRows?.toLocaleString() ?? 0}
-          </div>
-          <p className="text-[11px] text-zinc-400 mt-0.5">In current view</p>
         </div>
-      </div>
+      </CollapsibleCardsSection>
 
-      {/* Table Selector Tabs */}
-      {data?.tables && data.tables.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {data.tables.map((t) => {
-            const isSelected = (activeTable === t.name);
-            return (
-              <button
-                key={t.name}
-                onClick={() => handleTableChange(t.name)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition-all border ${
-                  isSelected
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs font-semibold"
-                    : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100"
-                }`}
-              >
-                <TableIcon className="w-3.5 h-3.5 opacity-70" />
-                <span className="font-mono">{t.name}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                    isSelected
-                      ? "bg-zinc-800 text-zinc-200 dark:bg-zinc-200 dark:text-zinc-800"
-                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
-                  }`}
-                >
-                  {t.rowCount}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Table Toolbar & Search */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-3 shadow-xs">
-        {/* Search Input */}
-        <div className="relative flex-1 sm:max-w-md">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setPage(1);
-            }}
-            placeholder={`Search in ${activeTable || "table"}...`}
-            className="w-full pl-9 pr-4 py-2 text-xs bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => {
-                setSearchQuery("");
-                setPage(1);
-              }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+      {/* Table Selection & Toolbar inside CollapsibleFilterSection */}
+      <CollapsibleFilterSection
+        title="Table Selection & Controls"
+        activeFiltersCount={(searchQuery.trim() ? 1 : 0) + (sortBy ? 1 : 0)}
+        activeFiltersSummary={`Table: ${activeTable || "None"}${
+          searchQuery.trim() ? ` • "${searchQuery}"` : ""
+        }${sortBy ? ` • Sorted: ${sortBy}` : ""}`}
+        onClearFilters={() => {
+          setSearchQuery("");
+          setSortBy("");
+          setPage(1);
+        }}
+      >
+        <div className="space-y-3">
+          {/* Table Selector Tabs */}
+          {data?.tables && data.tables.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+              {data.tables.map((t) => {
+                const isSelected = activeTable === t.name;
+                return (
+                  <button
+                    key={t.name}
+                    onClick={() => handleTableChange(t.name)}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition-all border ${
+                      isSelected
+                        ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs font-semibold"
+                        : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100"
+                    }`}
+                  >
+                    <TableIcon className="w-3.5 h-3.5 opacity-70" />
+                    <span className="font-mono">{t.name}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                        isSelected
+                          ? "bg-zinc-800 text-zinc-200 dark:bg-zinc-200 dark:text-zinc-800"
+                          : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
+                      }`}
+                    >
+                      {t.rowCount}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           )}
-        </div>
 
-        {/* Right Actions: Export and Rows per page */}
-        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-          <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-            <span>Show:</span>
-            <select
-              value={limit}
-              onChange={(e) => {
-                setLimit(Number(e.target.value));
-                setPage(1);
-              }}
-              className="px-2 py-1.5 rounded-lg text-xs font-medium bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 focus:outline-none"
-            >
-              <option value="15">15 rows</option>
-              <option value="25">25 rows</option>
-              <option value="50">50 rows</option>
-              <option value="100">100 rows</option>
-            </select>
+          {/* Table Toolbar & Search */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-3 shadow-xs">
+            {/* Search Input */}
+            <div className="relative flex-1 sm:max-w-md">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
+                placeholder={`Search in ${activeTable || "table"}...`}
+                className="w-full pl-9 pr-4 py-2 text-xs bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setPage(1);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Right Actions: Export and Rows per page */}
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+              <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                <span>Show:</span>
+                <select
+                  value={limit}
+                  onChange={(e) => {
+                    setLimit(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="px-2 py-1.5 rounded-lg text-xs font-medium bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                >
+                  <option value="15">15 rows</option>
+                  <option value="25">25 rows</option>
+                  <option value="50">50 rows</option>
+                  <option value="100">100 rows</option>
+                </select>
+              </div>
+
+              <div className="h-4 w-[1px] bg-zinc-200 dark:border-zinc-800 mx-1" />
+
+              {/* Export Buttons */}
+              <button
+                onClick={downloadCsv}
+                disabled={!data?.rows || data.rows.length === 0}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors disabled:opacity-40"
+                title="Download CSV"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>CSV</span>
+              </button>
+
+              <button
+                onClick={downloadJson}
+                disabled={!data?.rows || data.rows.length === 0}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors disabled:opacity-40"
+                title="Download JSON"
+              >
+                <FileCode className="w-3.5 h-3.5" />
+                <span>JSON</span>
+              </button>
+            </div>
           </div>
-
-          <div className="h-4 w-[1px] bg-zinc-200 dark:border-zinc-800 mx-1" />
-
-          {/* Export Buttons */}
-          <button
-            onClick={downloadCsv}
-            disabled={!data?.rows || data.rows.length === 0}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors disabled:opacity-40"
-            title="Download CSV"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>CSV</span>
-          </button>
-
-          <button
-            onClick={downloadJson}
-            disabled={!data?.rows || data.rows.length === 0}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors disabled:opacity-40"
-            title="Download JSON"
-          >
-            <FileCode className="w-3.5 h-3.5" />
-            <span>JSON</span>
-          </button>
         </div>
-      </div>
+      </CollapsibleFilterSection>
 
       {/* Schema Columns Badges */}
       {data?.columns && data.columns.length > 0 && (

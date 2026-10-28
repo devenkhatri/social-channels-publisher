@@ -19,6 +19,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { FolderPickerModal } from "@/components/onedrive/FolderPickerModal";
+import { CollapsibleCard } from "@/components/ui/CollapsibleCard";
+
 
 export default function OneDriveSettingsPage() {
   const [isFolderPickerOpen, setIsFolderPickerOpen] = useState(false);
@@ -168,27 +170,23 @@ export default function OneDriveSettingsPage() {
       </div>
 
       {/* Card 1: Connection & Account */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 sm:p-6 shadow-sm dark:shadow-xl space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-200 dark:border-zinc-800">
-          <div>
-            <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-              <span>Account Connection</span>
-              {isConnected ? (
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-medium flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Connected
-                </span>
-              ) : (
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-medium">
-                  Not Connected
-                </span>
-              )}
-            </h2>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-              Delegated Microsoft Graph API connection with <code className="text-zinc-700 dark:text-zinc-300 font-mono">Files.ReadWrite</code> permissions to read content and rename published folders to <code className="text-zinc-700 dark:text-zinc-300 font-mono">-Done</code>.
-            </p>
-          </div>
-
+      <CollapsibleCard
+        title="Account Connection"
+        icon={Cloud}
+        subtitle="Delegated Microsoft Graph API connection with Files.ReadWrite permissions to read content and rename published folders to -Done."
+        badge={
+          isConnected ? (
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-medium flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Connected
+            </span>
+          ) : (
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-medium">
+              Not Connected
+            </span>
+          )
+        }
+        headerActions={
           <div>
             {isConnected ? (
               <button
@@ -214,8 +212,8 @@ export default function OneDriveSettingsPage() {
               </button>
             )}
           </div>
-        </div>
-
+        }
+      >
         {isConnected && user && (
           <div className="flex items-center gap-3 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800">
             <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 flex items-center justify-center text-sm font-bold text-zinc-900 dark:text-zinc-100">
@@ -239,22 +237,15 @@ export default function OneDriveSettingsPage() {
             </div>
           </div>
         )}
-      </div>
+      </CollapsibleCard>
 
       {/* Card 2: Parent Folder Selector */}
       {isConnected && (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 sm:p-6 shadow-sm dark:shadow-xl space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-200 dark:border-zinc-800">
-            <div>
-              <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                <FolderOpen className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
-                <span>Parent Content Folder</span>
-              </h2>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                The folder containing all generated social post directories (e.g., <code className="text-zinc-700 dark:text-zinc-300 font-mono">20261026-0823</code>).
-              </p>
-            </div>
-
+        <CollapsibleCard
+          title="Parent Content Folder"
+          icon={FolderOpen}
+          subtitle="The folder containing all generated social post directories (e.g. 20261026-0823)."
+          headerActions={
             <button
               onClick={() => setIsFolderPickerOpen(true)}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 shadow-sm transition-colors min-h-[38px] cursor-pointer"
@@ -262,8 +253,8 @@ export default function OneDriveSettingsPage() {
               <FolderOpen className="w-3.5 h-3.5" />
               <span>{selectedFolder ? "Change Folder" : "Select Parent Folder"}</span>
             </button>
-          </div>
-
+          }
+        >
           {selectedFolder ? (
             <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
@@ -310,21 +301,15 @@ export default function OneDriveSettingsPage() {
               </label>
             </div>
           )}
-        </div>
+        </CollapsibleCard>
       )}
 
       {/* Card 3: Azure App Registration Credentials Form */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 sm:p-6 shadow-sm dark:shadow-xl space-y-6">
-        <div className="pb-4 border-b border-zinc-200 dark:border-zinc-800">
-          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-            <KeyRound className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
-            <span>Azure App Registration Credentials</span>
-          </h2>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Configure your Microsoft Entra ID (Azure AD) App Registration to authenticate with Microsoft Graph API.
-          </p>
-        </div>
-
+      <CollapsibleCard
+        title="Azure App Registration Credentials"
+        icon={KeyRound}
+        subtitle="Configure your Microsoft Entra ID (Azure AD) App Registration to authenticate with Microsoft Graph API."
+      >
         <form onSubmit={handleSaveCredentials} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -420,7 +405,7 @@ export default function OneDriveSettingsPage() {
             <li>Create a Client Secret under Certificates & secrets, copy the Value, and save it above.</li>
           </ol>
         </div>
-      </div>
+      </CollapsibleCard>
 
       {/* Folder Picker Modal Dialog */}
       <FolderPickerModal

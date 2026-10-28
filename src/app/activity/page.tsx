@@ -23,6 +23,9 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
+import { CollapsibleCardsSection } from "@/components/ui/CollapsibleCardsSection";
+import { CollapsibleFilterSection } from "@/components/ui/CollapsibleFilterSection";
+
 
 type ActivityLog = {
   id: string;
@@ -85,7 +88,56 @@ export default function ActivityLogPage() {
 
   const activities = data?.activities || [];
 
+  const activityStats = useMemo(() => {
+    let publishes = 0;
+    let syncs = 0;
+    let renames = 0;
+    let errors = 0;
+
+    for (const act of activities) {
+      if (act.type === "publish") publishes++;
+      else if (act.type === "sync") syncs++;
+      else if (act.type === "rename") renames++;
+      if (act.type === "error" || act.status === "error") errors++;
+    }
+
+    return {
+      total: activities.length,
+      publishes,
+      syncs: syncs + renames,
+      errors,
+    };
+  }, [activities]);
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (activeTab !== "all") count++;
+    if (channelFilter !== "all") count++;
+    if (statusFilter !== "all") count++;
+    if (search.trim()) count++;
+    if (sortOrder !== "newest") count++;
+    return count;
+  }, [activeTab, channelFilter, statusFilter, search, sortOrder]);
+
+  const activeFiltersSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (activeTab !== "all") parts.push(activeTab.toUpperCase());
+    if (channelFilter !== "all") parts.push(channelFilter);
+    if (statusFilter !== "all") parts.push(`Status: ${statusFilter}`);
+    if (search.trim()) parts.push(`"${search}"`);
+    return parts.join(" • ") || "All Events";
+  }, [activeTab, channelFilter, statusFilter, search]);
+
+  const handleResetFilters = () => {
+    setActiveTab("all");
+    setChannelFilter("all");
+    setStatusFilter("all");
+    setSearch("");
+    setSortOrder("newest");
+  };
+
   // Filter & sort
+
   const filteredActivities = useMemo(() => {
     return activities
       .filter((act) => {
@@ -217,102 +269,170 @@ export default function ActivityLogPage() {
         </div>
       </div>
 
-      {/* Filter Tabs by Event Type */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-zinc-200 dark:border-zinc-800 scrollbar-none">
-        {(
-          [
-            { id: "all", label: "All Events" },
-            { id: "publish", label: "Publishes" },
-            { id: "sync", label: "OneDrive Syncs" },
-            { id: "rename", label: "Folder Renames (-Done)" },
-            { id: "error", label: "Errors" },
-          ] as const
-        ).map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all min-h-[40px] flex items-center ${
-              activeTab === tab.id
-                ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs font-semibold"
-                : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Activity Overview Cards */}
+      <CollapsibleCardsSection
+        title="Activity Overview Cards"
+        icon={Activity}
+        summary={`${activityStats.total} total events • ${activityStats.publishes} publishes`}
+        badge={
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+            4 cards
+          </span>
+        }
+      >
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
+            <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+              <span className="font-medium">Total Events</span>
+              <Activity className="w-4 h-4 text-zinc-500" />
+            </div>
+            <div className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+              {isLoading ? "..." : activityStats.total}
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-0.5">Recorded log entries</p>
+          </div>
 
-      {/* Search & Channel & Status Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        <div className="relative">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search activity description..."
-            className="w-full pl-9 pr-8 py-2 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-zinc-600"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
+            <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+              <span className="font-medium">Publishes</span>
+              <Send className="w-4 h-4 text-emerald-500" />
+            </div>
+            <div className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+              {isLoading ? "..." : activityStats.publishes}
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-0.5">Social broadcasts</p>
+          </div>
 
-        <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2">
-          <Filter className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-          <select
-            value={channelFilter}
-            onChange={(e) => setChannelFilter(e.target.value)}
-            className="w-full bg-transparent text-zinc-900 dark:text-zinc-100 focus:outline-none text-xs cursor-pointer truncate"
-          >
-            <option value="all" className="bg-white dark:bg-zinc-900">
-              All Channels
-            </option>
-            <option value="linkedin" className="bg-white dark:bg-zinc-900">
-              LinkedIn
-            </option>
-            <option value="linkedin_page" className="bg-white dark:bg-zinc-900">
-              LinkedIn Page
-            </option>
-            <option value="threads" className="bg-white dark:bg-zinc-900">
-              Threads
-            </option>
-            <option value="youtube" className="bg-white dark:bg-zinc-900">
-              YouTube
-            </option>
-            <option value="instagram" className="bg-white dark:bg-zinc-900">
-              Instagram
-            </option>
-            <option value="facebook" className="bg-white dark:bg-zinc-900">
-              Facebook
-            </option>
-            <option value="skool" className="bg-white dark:bg-zinc-900">
-              Skool
-            </option>
-          </select>
-        </div>
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
+            <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+              <span className="font-medium">Syncs & Renames</span>
+              <FolderSync className="w-4 h-4 text-sky-500" />
+            </div>
+            <div className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+              {isLoading ? "..." : activityStats.syncs}
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-0.5">OneDrive operations</p>
+          </div>
 
-        <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2">
-          <SlidersHorizontal className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-          <select
-            value={sortOrder}
-            onChange={(e: any) => setSortOrder(e.target.value)}
-            className="w-full bg-transparent text-zinc-900 dark:text-zinc-100 focus:outline-none text-xs cursor-pointer truncate"
-          >
-            <option value="newest" className="bg-white dark:bg-zinc-900">
-              Newest First
-            </option>
-            <option value="oldest" className="bg-white dark:bg-zinc-900">
-              Oldest First
-            </option>
-          </select>
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
+            <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+              <span className="font-medium">Issues & Errors</span>
+              <AlertTriangle className="w-4 h-4 text-rose-500" />
+            </div>
+            <div className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+              {isLoading ? "..." : activityStats.errors}
+            </div>
+            <p className="text-[11px] text-zinc-400 mt-0.5">Errors / warnings</p>
+          </div>
         </div>
-      </div>
+      </CollapsibleCardsSection>
+
+      {/* Filter Tabs by Event Type & Search Controls */}
+      <CollapsibleFilterSection
+        title="Activity Filters & Event Types"
+        activeFiltersCount={activeFiltersCount}
+        activeFiltersSummary={activeFiltersSummary}
+        onClearFilters={handleResetFilters}
+      >
+        <div className="space-y-3">
+          {/* Filter Tabs by Event Type */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-zinc-200 dark:border-zinc-800 scrollbar-none">
+            {(
+              [
+                { id: "all", label: "All Events" },
+                { id: "publish", label: "Publishes" },
+                { id: "sync", label: "OneDrive Syncs" },
+                { id: "rename", label: "Folder Renames (-Done)" },
+                { id: "error", label: "Errors" },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all min-h-[40px] flex items-center ${
+                  activeTab === tab.id
+                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs font-semibold"
+                    : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Search & Channel & Status Filters */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search activity description..."
+                className="w-full pl-9 pr-8 py-2 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-zinc-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2">
+              <Filter className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+              <select
+                value={channelFilter}
+                onChange={(e) => setChannelFilter(e.target.value)}
+                className="w-full bg-transparent text-zinc-900 dark:text-zinc-100 focus:outline-none text-xs cursor-pointer truncate"
+              >
+                <option value="all" className="bg-white dark:bg-zinc-900">
+                  All Channels
+                </option>
+                <option value="linkedin" className="bg-white dark:bg-zinc-900">
+                  LinkedIn
+                </option>
+                <option value="linkedin_page" className="bg-white dark:bg-zinc-900">
+                  LinkedIn Page
+                </option>
+                <option value="threads" className="bg-white dark:bg-zinc-900">
+                  Threads
+                </option>
+                <option value="youtube" className="bg-white dark:bg-zinc-900">
+                  YouTube
+                </option>
+                <option value="instagram" className="bg-white dark:bg-zinc-900">
+                  Instagram
+                </option>
+                <option value="facebook" className="bg-white dark:bg-zinc-900">
+                  Facebook
+                </option>
+                <option value="skool" className="bg-white dark:bg-zinc-900">
+                  Skool
+                </option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+              <select
+                value={sortOrder}
+                onChange={(e: any) => setSortOrder(e.target.value)}
+                className="w-full bg-transparent text-zinc-900 dark:text-zinc-100 focus:outline-none text-xs cursor-pointer truncate"
+              >
+                <option value="newest" className="bg-white dark:bg-zinc-900">
+                  Newest First
+                </option>
+                <option value="oldest" className="bg-white dark:bg-zinc-900">
+                  Oldest First
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </CollapsibleFilterSection>
 
       {/* Content Area */}
       {isLoading ? (
