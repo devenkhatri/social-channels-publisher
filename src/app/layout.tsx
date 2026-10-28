@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/components/providers/QueryProvider";
@@ -14,6 +14,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
+    { media: "(prefers-color-scheme: dark)", color: "#09090b" },
+  ],
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_APP_URL || "https://social-publisher.local"
@@ -21,6 +31,12 @@ export const metadata: Metadata = {
   title: "Social Channels Publisher",
   description:
     "Automated multi-channel publishing to LinkedIn, YouTube, Instagram, Facebook, and Skool via OneDrive and Zernio.",
+  applicationName: "Social Channels Publisher",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Publisher",
+  },
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },
