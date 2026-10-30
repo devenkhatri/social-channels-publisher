@@ -3,10 +3,30 @@ import { syncZernioStatuses } from "@/services/zernio";
 
 export async function POST(request: NextRequest) {
   try {
-    const result = await syncZernioStatuses();
+    let contentItemId: string | undefined;
+    let postId: string | undefined;
+
+    try {
+      const body = await request.json();
+      contentItemId = body?.contentItemId;
+      postId = body?.postId;
+    } catch {
+      // Body is optional
+    }
+
+    const result = await syncZernioStatuses({ contentItemId, postId });
+
+    let message = `Synchronized ${result.matchedPosts} Zernio posts (${result.scheduledCount} queued, ${result.publishedCount} published, ${result.updatedStatuses} updated).`;
+    if (contentItemId) {
+      message =
+        result.contentItemUpdated && result.contentItemUpdated > 0
+          ? `Synchronized live Zernio status (${result.contentItemUpdated} channel post${result.contentItemUpdated > 1 ? "s" : ""} updated).`
+          : `Synchronized live Zernio status with opened post. All channel statuses are up to date.`;
+    }
+
     return NextResponse.json({
       success: true,
-      message: `Synchronized ${result.matchedPosts} Zernio posts (${result.scheduledCount} queued, ${result.publishedCount} published, ${result.updatedStatuses} updated).`,
+      message,
       result,
     });
   } catch (error: any) {

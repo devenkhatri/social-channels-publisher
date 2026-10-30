@@ -1256,6 +1256,7 @@ export interface ZernioSyncResult {
   scheduledCount: number;
   publishedCount: number;
   failedCount: number;
+  contentItemUpdated?: number;
 }
 
 /**
@@ -1263,7 +1264,10 @@ export interface ZernioSyncResult {
  * local channel posts, and updates their exact status (scheduled vs published vs failed),
  * queue timestamps, and platform URLs.
  */
-export async function syncZernioStatuses(): Promise<ZernioSyncResult> {
+export async function syncZernioStatuses(options?: {
+  contentItemId?: string;
+  postId?: string;
+}): Promise<ZernioSyncResult> {
   const accounts = await db.select().from(schema.zernioAccounts);
   if (accounts.length === 0) {
     return {
@@ -1273,6 +1277,7 @@ export async function syncZernioStatuses(): Promise<ZernioSyncResult> {
       scheduledCount: 0,
       publishedCount: 0,
       failedCount: 0,
+      contentItemUpdated: 0,
     };
   }
 
@@ -1380,7 +1385,61 @@ export async function syncZernioStatuses(): Promise<ZernioSyncResult> {
   let scheduledCount = 0;
   let publishedCount = 0;
   let failedCount = 0;
+  let contentItemUpdated = 0;
   const nowIso = new Date().toISOString();
+
+  // If targeted to a specific content item or post, check live status directly for immediate accuracy
+  if (options?.contentItemId || options?.postId) {
+    const targetPosts = localPosts.filter((p) => {
+      if (options.postId && p.id === options.postId) return true;
+      if (options.contentItemId && p.contentItemId === options.contentItemId) return true;
+      return false;
+    });
+
+    for (const p of targetPosts) {
+      if (p.zernioPostId) {
+        try {
+          const live = await getZernioPost(p.zernioPostId, p.zernioAccountId);
+          if (live) {
+            let finalStatus: "scheduled" | "published" | "failed" | "draft" = "draft";
+            if (live.status === "scheduled") finalStatus = "scheduled";
+            else if (live.status === "published") finalStatus = "published";
+            else if (live.status === "failed") finalStatus = "failed";
+
+            const postUrl = live.platformPostUrl || p.platformPostUrl || null;
+            const scheduledFor = live.scheduledFor || p.scheduledFor || null;
+            const publishedAt = finalStatus === "published" ? (live.publishedAt || nowIso) : null;
+
+            if (
+              p.status !== finalStatus ||
+              (postUrl && p.platformPostUrl !== postUrl) ||
+              (scheduledFor && p.scheduledFor !== scheduledFor)
+            ) {
+              await db
+                .update(schema.channelPosts)
+                .set({
+                  status: finalStatus,
+                  scheduledFor,
+                  publishedAt,
+                  platformPostUrl: postUrl,
+                  platformPostId: live.platformPostId || p.platformPostId,
+                  updatedAt: nowIso,
+                })
+                .where(eq(schema.channelPosts.id, p.id));
+
+              p.status = finalStatus;
+              p.platformPostUrl = postUrl;
+              p.scheduledFor = scheduledFor;
+              updatedStatuses++;
+              contentItemUpdated++;
+            }
+          }
+        } catch (e) {
+          console.warn("[syncZernioStatuses] Direct post check error:", e);
+        }
+      }
+    }
+  }
 
   // Track matched local post IDs to ensure 1-to-1 matching
   const matchedLocalIds = new Set<string>();
@@ -1485,6 +1544,9 @@ export async function syncZernioStatuses(): Promise<ZernioSyncResult> {
         .where(eq(schema.channelPosts.id, match.id));
 
       updatedStatuses++;
+      if (options?.contentItemId && match.contentItemId === options.contentItemId) {
+        contentItemUpdated++;
+      }
     }
   }
 
@@ -1509,6 +1571,9 @@ export async function syncZernioStatuses(): Promise<ZernioSyncResult> {
           })
           .where(eq(schema.channelPosts.id, p.id));
         updatedStatuses++;
+        if (options?.contentItemId && p.contentItemId === options.contentItemId) {
+          contentItemUpdated++;
+        }
       } else if (livePost.status !== p.status) {
         let finalStatus = "draft";
         if (livePost.status === "scheduled") finalStatus = "scheduled";
@@ -1527,6 +1592,9 @@ export async function syncZernioStatuses(): Promise<ZernioSyncResult> {
           })
           .where(eq(schema.channelPosts.id, p.id));
         updatedStatuses++;
+        if (options?.contentItemId && p.contentItemId === options.contentItemId) {
+          contentItemUpdated++;
+        }
       }
     } catch {
       // Ignore individual lookup errors
@@ -1542,5 +1610,6 @@ export async function syncZernioStatuses(): Promise<ZernioSyncResult> {
     scheduledCount,
     publishedCount,
     failedCount,
+    contentItemUpdated,
   };
 }

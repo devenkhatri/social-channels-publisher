@@ -466,10 +466,14 @@ export default function ContentDetailPage({
     },
   });
 
-  // Check live status from Zernio
+  // Check live status from Zernio for this opened post
   const checkZernioStatusMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/zernio/sync", { method: "POST" });
+      const res = await fetch("/api/zernio/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contentItemId: id }),
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to check Zernio status");
       return json;
@@ -478,7 +482,7 @@ export default function ContentDetailPage({
       queryClient.invalidateQueries({ queryKey: ["content-detail", id] });
       queryClient.invalidateQueries({ queryKey: ["content-items"] });
       setToastMessage({
-        text: "Updated latest post status from Zernio!",
+        text: res.message || "Updated post status from Zernio!",
         type: "success",
       });
       setTimeout(() => setToastMessage(null), 3500);
@@ -1092,6 +1096,19 @@ export default function ContentDetailPage({
 
           {/* Action Buttons Aligned Together */}
           <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap justify-start sm:justify-end">
+            {/* Sync Zernio Status for this Post */}
+            <button
+              onClick={() => checkZernioStatusMutation.mutate()}
+              disabled={checkZernioStatusMutation.isPending || publishProgress.isActive}
+              className="flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-semibold bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer whitespace-nowrap shrink-0"
+              title="Sync live Zernio publishing and queue status for this opened post"
+            >
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${checkZernioStatusMutation.isPending ? "animate-spin text-amber-500" : "text-zinc-500"}`}
+              />
+              <span>{checkZernioStatusMutation.isPending ? "Syncing..." : "Sync Zernio"}</span>
+            </button>
+
             {item.isDone === 0 && (
               <>
                 <button
@@ -1731,6 +1748,20 @@ export default function ContentDetailPage({
             }
             headerActions={
               <div className="flex items-center gap-2">
+                {activeChannel !== "skool" && (
+                  <button
+                    type="button"
+                    onClick={() => checkZernioStatusMutation.mutate()}
+                    disabled={checkZernioStatusMutation.isPending}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 min-h-[36px] rounded-lg text-xs font-medium bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+                    title="Sync live publishing and queue status with Zernio for this post"
+                  >
+                    <RefreshCw
+                      className={`w-3.5 h-3.5 ${checkZernioStatusMutation.isPending ? "animate-spin text-amber-500" : "text-zinc-500"}`}
+                    />
+                    <span>{checkZernioStatusMutation.isPending ? "Syncing..." : "Sync Zernio"}</span>
+                  </button>
+                )}
                 {currentPost?.platformPostUrl ? (
                   <a
                     href={currentPost.platformPostUrl}
