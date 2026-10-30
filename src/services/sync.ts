@@ -20,6 +20,7 @@ import {
   SlideItem,
 } from "./extractor";
 import { logActivity } from "./activity";
+import { syncZernioStatuses, ZernioSyncResult } from "./zernio";
 
 export interface SyncResult {
   success: boolean;
@@ -29,6 +30,7 @@ export interface SyncResult {
   updatedItems: number;
   skippedFolders: number;
   lastSyncedAt: string;
+  zernioSync?: ZernioSyncResult | null;
 }
 
 /**
@@ -394,13 +396,13 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
           body: postBody,
           mediaType,
           postType,
-          status: isDone ? "published" : "draft",
-          publishedAt: isDone ? nowIso : null,
+          status: (isDone && channel !== "skool") ? "published" : "draft",
+          publishedAt: (isDone && channel !== "skool") ? nowIso : null,
         });
       } else {
-        // If folder is marked isDone, reflect published status
+        // If folder is marked isDone, reflect published status (except Skool which is published manually)
         const post = existingPosts[0];
-        if (isDone && post.status === "draft") {
+        if (isDone && post.status === "draft" && channel !== "skool") {
           await db
             .update(schema.channelPosts)
             .set({
@@ -480,25 +482,36 @@ export async function syncFromOneDrive(): Promise<SyncResult> {
     });
   }
 
+  // 4. Fetch the latest live status (queue / published / failed) from Zernio and sync statuses
+  let zernioSyncResult: ZernioSyncResult | null = null;
+  try {
+    zernioSyncResult = await syncZernioStatuses();
+  } catch (zernioErr) {
+    console.warn("Failed to sync Zernio statuses during content sync:", zernioErr);
+  }
+
   const processedCount = folders.length - skippedCount;
   const skipMessage = skippedCount > 0 ? ` (${skippedCount} skipped)` : "";
-
+  const zernioMessage = zernioSyncResult
+    ? ` • Synced ${zernioSyncResult.matchedPosts} Zernio posts (${zernioSyncResult.scheduledCount} queued, ${zernioSyncResult.publishedCount} published)`
+    : "";
 
   await logActivity({
     type: "sync",
-    title: "OneDrive Content Sync",
-    description: `Processed ${processedCount} folders${skipMessage} (${newCount} new, ${updatedCount} updated)`,
+    title: "OneDrive & Zernio Sync",
+    description: `Processed ${processedCount} folders${skipMessage} (${newCount} new, ${updatedCount} updated)${zernioMessage}`,
     status: "success",
   });
 
   return {
     success: true,
-    message: `Processed ${processedCount} folders${skipMessage}`,
+    message: `Processed ${processedCount} folders${skipMessage}${zernioMessage}`,
     syncedFolders: processedCount,
     newItems: newCount,
     updatedItems: updatedCount,
     skippedFolders: skippedCount,
     lastSyncedAt,
+    zernioSync: zernioSyncResult,
   };
 }
 

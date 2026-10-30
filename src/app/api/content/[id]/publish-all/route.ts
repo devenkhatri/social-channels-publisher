@@ -21,6 +21,9 @@ export async function POST(
 
     const results = [];
     for (const p of posts) {
+      if (p.channel === "skool") {
+        continue;
+      }
       if (p.status !== "published") {
         try {
           const res = await publishChannelPost(p.id);

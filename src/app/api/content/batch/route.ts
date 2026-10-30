@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, schema } from "@/db";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and, ne } from "drizzle-orm";
 import { renameFolder } from "@/services/onedrive";
 import { publishChannelPost } from "@/services/publisher";
 import { logActivity } from "@/services/activity";
@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { itemIds, action } = body as {
       itemIds: string[];
-      action: "mark-done" | "publish-all";
+      action: "mark-done" | "publish-all" | "skip-skool" | "unskip-skool";
     };
 
     if (!Array.isArray(itemIds) || itemIds.length === 0) {
@@ -18,6 +18,52 @@ export async function POST(request: NextRequest) {
         { error: "itemIds array must contain at least one ID" },
         { status: 400 }
       );
+    }
+
+    if (action === "skip-skool") {
+      const nowIso = new Date().toISOString();
+      await db
+        .update(schema.channelPosts)
+        .set({
+          status: "skipped",
+          publishedAt: null,
+          scheduledFor: null,
+          updatedAt: nowIso,
+        })
+        .where(
+          and(
+            inArray(schema.channelPosts.contentItemId, itemIds),
+            eq(schema.channelPosts.channel, "skool")
+          )
+        );
+
+      return NextResponse.json({
+        success: true,
+        message: `Marked Skool as skipped for ${itemIds.length} items`,
+      });
+    }
+
+    if (action === "unskip-skool") {
+      const nowIso = new Date().toISOString();
+      await db
+        .update(schema.channelPosts)
+        .set({
+          status: "draft",
+          publishedAt: null,
+          scheduledFor: null,
+          updatedAt: nowIso,
+        })
+        .where(
+          and(
+            inArray(schema.channelPosts.contentItemId, itemIds),
+            eq(schema.channelPosts.channel, "skool")
+          )
+        );
+
+      return NextResponse.json({
+        success: true,
+        message: `Reset Skool to unpublished (draft) for ${itemIds.length} items`,
+      });
     }
 
     if (action === "mark-done") {
@@ -55,7 +101,7 @@ export async function POST(request: NextRequest) {
           })
           .where(eq(schema.contentItems.id, item.id));
 
-        // Mark associated posts as published
+        // Mark associated posts as published (except Skool)
         await db
           .update(schema.channelPosts)
           .set({
@@ -63,7 +109,12 @@ export async function POST(request: NextRequest) {
             publishedAt: nowIso,
             updatedAt: nowIso,
           })
-          .where(eq(schema.channelPosts.contentItemId, item.id));
+          .where(
+            and(
+              eq(schema.channelPosts.contentItemId, item.id),
+              ne(schema.channelPosts.channel, "skool")
+            )
+          );
 
         await logActivity({
           type: "rename",
@@ -98,6 +149,7 @@ export async function POST(request: NextRequest) {
 
         const itemResults = [];
         for (const p of posts) {
+          if (p.channel === "skool") continue;
           if (p.status !== "published") {
             try {
               const res = await publishChannelPost(p.id);

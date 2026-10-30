@@ -27,6 +27,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  MinusCircle,
+  RotateCcw,
 } from "lucide-react";
 import { CollapsibleCardsSection } from "@/components/ui/CollapsibleCardsSection";
 import { CollapsibleFilterSection } from "@/components/ui/CollapsibleFilterSection";
@@ -82,6 +84,9 @@ export default function DashboardPage() {
   const [channelStatusFilter, setChannelStatusFilter] = useState<
     "any" | "published" | "pending" | "failed"
   >("any");
+  const [skoolFilter, setSkoolFilter] = useState<
+    "all" | "unpublished" | "published" | "skipped"
+  >("all");
   const [search, setSearch] = useState("");
   const [sortOrder, setSortOrder] = useState<SortOption>("newest");
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
@@ -153,6 +158,26 @@ export default function DashboardPage() {
     },
   });
 
+  // Fast Zernio status sync mutation (queries Zernio API for true queue vs published status)
+  const syncZernioMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/zernio/sync", { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to sync Zernio statuses");
+      return json;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["content-items"] });
+      queryClient.invalidateQueries({ queryKey: ["sync-status"] });
+      setToastMessage(res.message || "Synchronized Zernio post statuses successfully!");
+      setTimeout(() => setToastMessage(null), 4000);
+    },
+    onError: (err: any) => {
+      setToastMessage(`Zernio sync failed: ${err.message}`);
+      setTimeout(() => setToastMessage(null), 5000);
+    },
+  });
+
   // Quick "Mark as Done & Rename on OneDrive" mutation
   const markDoneMutation = useMutation({
     mutationFn: async (contentItemId: string) => {
@@ -179,7 +204,7 @@ export default function DashboardPage() {
 
   // Batch mutation for multi-selected content folders
   const batchMutation = useMutation({
-    mutationFn: async (action: "mark-done" | "publish-all") => {
+    mutationFn: async (action: "mark-done" | "publish-all" | "skip-skool" | "unskip-skool") => {
       const res = await fetch("/api/content/batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -240,19 +265,45 @@ export default function DashboardPage() {
     return { total, unpublished, inProgress, published };
   }, [rawItems]);
 
+  // Compute calculated Skool channel metrics across all items
+  const skoolCounts = useMemo(() => {
+    let total = 0;
+    let published = 0;
+    let unpublished = 0;
+    let skipped = 0;
+
+    for (const item of rawItems) {
+      const skPost = (item.posts || []).find((p) => p.channel.toLowerCase() === "skool");
+      const st = skPost?.status || "draft";
+      total++;
+      if (st === "published") {
+        published++;
+      } else if (st === "skipped") {
+        skipped++;
+      } else {
+        unpublished++;
+      }
+    }
+
+    return { total, published, unpublished, skipped };
+  }, [rawItems]);
+
   // Active filters count & summary for mobile collapsible filter section
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (statusFilter !== "all") count++;
     if (channelFilter !== "all") count++;
+    if (skoolFilter !== "all") count++;
     if (search.trim()) count++;
     if (sortOrder !== "newest") count++;
     return count;
-  }, [statusFilter, channelFilter, search, sortOrder]);
+  }, [statusFilter, channelFilter, skoolFilter, search, sortOrder]);
 
   const activeFiltersSummary = useMemo(() => {
     const parts: string[] = [];
-    if (statusFilter !== "all") {
+    if (skoolFilter !== "all") {
+      parts.push(`Skool: ${skoolFilter.charAt(0).toUpperCase() + skoolFilter.slice(1)}`);
+    } else if (statusFilter !== "all") {
       parts.push(
         statusFilter === "unpublished"
           ? "Pending"
@@ -267,11 +318,12 @@ export default function DashboardPage() {
     }
     if (search.trim()) parts.push(`"${search.trim()}"`);
     return parts.join(" • ") || "Default filters";
-  }, [statusFilter, channelFilter, search]);
+  }, [statusFilter, channelFilter, skoolFilter, search]);
 
   const handleResetFilters = () => {
     setStatusFilter("all");
     setChannelFilter("all");
+    setSkoolFilter("all");
     setSearch("");
     setSortOrder("newest");
     setCurrentPage(1);
@@ -285,12 +337,21 @@ export default function DashboardPage() {
         const pubCount = (item.posts || []).filter((p) => p.status === "published").length;
         const isDoneOrAllPub = item.isDone === 1 || pubCount === 7;
 
-        // 1. Status Filter
-        if (statusFilter === "unpublished" && isDoneOrAllPub) return false;
-        if (statusFilter === "published" && !isDoneOrAllPub) return false;
-        if (statusFilter === "in_progress" && (pubCount === 0 || isDoneOrAllPub)) return false;
+        // 1. Skool Specific Filter (takes precedence over folder status filter when active)
+        if (skoolFilter !== "all") {
+          const skPost = (item.posts || []).find((p) => p.channel.toLowerCase() === "skool");
+          const st = skPost?.status || "draft";
+          if (skoolFilter === "unpublished" && (st === "published" || st === "skipped")) return false;
+          if (skoolFilter === "published" && st !== "published") return false;
+          if (skoolFilter === "skipped" && st !== "skipped") return false;
+        } else {
+          // 2. Folder Status Filter (active when Skool filter is "all")
+          if (statusFilter === "unpublished" && isDoneOrAllPub) return false;
+          if (statusFilter === "published" && !isDoneOrAllPub) return false;
+          if (statusFilter === "in_progress" && (pubCount === 0 || isDoneOrAllPub)) return false;
+        }
 
-        // 2. Channel Filter
+        // 3. Channel Filter
         if (channelFilter !== "all") {
           const post = (item.posts || []).find(
             (p) => p.channel.toLowerCase() === channelFilter.toLowerCase()
@@ -300,7 +361,7 @@ export default function DashboardPage() {
           if (channelStatusFilter === "failed" && post?.status !== "failed") return false;
         }
 
-        // 3. Search query (matches title or folderName)
+        // 4. Search query (matches title or folderName)
         if (search) {
           const q = search.toLowerCase();
           const matchTitle = item.title && item.title.toLowerCase().includes(q);
@@ -338,7 +399,7 @@ export default function DashboardPage() {
         }
         return 0;
       });
-  }, [rawItems, statusFilter, channelFilter, channelStatusFilter, search, sortOrder]);
+  }, [rawItems, statusFilter, channelFilter, channelStatusFilter, skoolFilter, search, sortOrder]);
 
   // Paginated slice
   const totalPages = pageSize === 0 ? 1 : Math.ceil(filteredItems.length / pageSize) || 1;
@@ -374,6 +435,7 @@ export default function DashboardPage() {
     const isFail = post?.status === "failed";
     const isSched = post?.status === "scheduled";
     const isPublishing = post?.status === "publishing";
+    const isSkipped = post?.status === "skipped";
 
     let label = channel.toUpperCase().slice(0, 2);
     if (channel === "linkedin") label = "LI";
@@ -387,6 +449,8 @@ export default function DashboardPage() {
 
     const statusTitle = isPub
       ? `${channel}: Published`
+      : isSkipped
+      ? `${channel}: Skipped`
       : isSched
       ? `${channel}: Queued`
       : isFail
@@ -406,14 +470,17 @@ export default function DashboardPage() {
             ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 animate-pulse"
             : isSched
             ? "bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-500/25"
+            : isSkipped
+            ? "bg-zinc-200/50 dark:bg-zinc-800/50 text-zinc-400 dark:text-zinc-500 border border-dashed border-zinc-300 dark:border-zinc-700"
             : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700/60"
         }`}
       >
-        <span>{label}</span>
+        <span className={isSkipped ? "line-through opacity-75" : ""}>{label}</span>
         {isPub && <Check className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />}
         {isSched && <Clock className="w-2.5 h-2.5 text-sky-600 dark:text-sky-400" />}
         {isFail && <AlertCircle className="w-2.5 h-2.5 text-rose-600 dark:text-rose-400" />}
         {isPublishing && <RefreshCw className="w-2.5 h-2.5 animate-spin text-amber-600 dark:text-amber-400" />}
+        {isSkipped && <MinusCircle className="w-2.5 h-2.5 text-zinc-400 dark:text-zinc-500" />}
       </span>
     );
   };
@@ -459,13 +526,26 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => syncMutation.mutate()}
-            disabled={syncMutation.isPending}
-            className="flex items-center gap-2 px-3.5 py-2 min-h-[40px] rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-xs font-medium shadow-sm transition-all disabled:opacity-50"
+            disabled={syncMutation.isPending || syncZernioMutation.isPending}
+            className="flex items-center gap-2 px-3.5 py-2 min-h-[40px] rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-xs font-medium shadow-sm transition-all disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw
               className={`w-3.5 h-3.5 ${syncMutation.isPending ? "animate-spin" : ""}`}
             />
             <span>{syncMutation.isPending ? "Syncing..." : "Sync from OneDrive"}</span>
+          </button>
+
+          <button
+            onClick={() => syncZernioMutation.mutate()}
+            disabled={syncZernioMutation.isPending || syncMutation.isPending}
+            className="flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl text-xs font-medium bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
+            title="Fast check of queue & live publish statuses directly from Zernio"
+          >
+            <RefreshCw
+              className={`w-3.5 h-3.5 ${syncZernioMutation.isPending ? "animate-spin text-amber-500" : "text-zinc-500"}`}
+            />
+            <span className="hidden sm:inline">{syncZernioMutation.isPending ? "Syncing Zernio..." : "Sync Zernio"}</span>
+            <span className="sm:hidden">{syncZernioMutation.isPending ? "..." : "Zernio"}</span>
           </button>
 
           <Link
@@ -598,58 +678,96 @@ export default function DashboardPage() {
         <div className="space-y-3 pt-1">
           {/* Status Filter Pills */}
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="inline-flex p-1 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 text-xs font-medium max-w-full overflow-x-auto">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex p-1 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 text-xs font-medium max-w-full overflow-x-auto">
+                <button
+                  onClick={() => {
+                    setSkoolFilter("all");
+                    setStatusFilter("unpublished");
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all cursor-pointer ${
+                    skoolFilter === "all" && statusFilter === "unpublished"
+                      ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
+                      : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  Pending ({summaryCounts.unpublished})
+                </button>
+                <button
+                  onClick={() => {
+                    setSkoolFilter("all");
+                    setStatusFilter("in_progress");
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all cursor-pointer ${
+                    skoolFilter === "all" && statusFilter === "in_progress"
+                      ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
+                      : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  In Progress ({summaryCounts.inProgress})
+                </button>
+                <button
+                  onClick={() => {
+                    setSkoolFilter("all");
+                    setStatusFilter("published");
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all cursor-pointer ${
+                    skoolFilter === "all" && statusFilter === "published"
+                      ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
+                      : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  Published ({summaryCounts.published})
+                </button>
+                <button
+                  onClick={() => {
+                    setSkoolFilter("all");
+                    setStatusFilter("all");
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all cursor-pointer ${
+                    skoolFilter === "all" && statusFilter === "all"
+                      ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
+                      : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  All ({summaryCounts.total})
+                </button>
+              </div>
+
+              {/* Dedicated Skool Quick Filter Pill */}
               <button
+                type="button"
                 onClick={() => {
-                  setStatusFilter("unpublished");
+                  if (skoolFilter === "unpublished") {
+                    setSkoolFilter("all");
+                    setStatusFilter("unpublished");
+                  } else {
+                    setSkoolFilter("unpublished");
+                    setStatusFilter("all");
+                  }
                   setCurrentPage(1);
                 }}
-                className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
-                  statusFilter === "unpublished"
-                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
-                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all cursor-pointer shadow-xs ${
+                  skoolFilter === "unpublished"
+                    ? "bg-amber-500 text-zinc-950 border-amber-500 font-bold ring-2 ring-amber-500/20"
+                    : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 dark:text-amber-200 border-amber-500/30"
                 }`}
+                title="Filter for items with unpublished Skool posts"
               >
-                Pending ({summaryCounts.unpublished})
-              </button>
-              <button
-                onClick={() => {
-                  setStatusFilter("in_progress");
-                  setCurrentPage(1);
-                }}
-                className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
-                  statusFilter === "in_progress"
-                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
-                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-                }`}
-              >
-                In Progress ({summaryCounts.inProgress})
-              </button>
-              <button
-                onClick={() => {
-                  setStatusFilter("published");
-                  setCurrentPage(1);
-                }}
-                className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
-                  statusFilter === "published"
-                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
-                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-                }`}
-              >
-                Published ({summaryCounts.published})
-              </button>
-              <button
-                onClick={() => {
-                  setStatusFilter("all");
-                  setCurrentPage(1);
-                }}
-                className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
-                  statusFilter === "all"
-                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
-                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-                }`}
-              >
-                All ({summaryCounts.total})
+                <span>Skool Unpublished</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                    skoolFilter === "unpublished"
+                      ? "bg-zinc-950/20 text-zinc-950 font-bold"
+                      : "bg-amber-500/20 text-amber-800 dark:text-amber-300 font-semibold"
+                  }`}
+                >
+                  {skoolCounts.unpublished}
+                </span>
               </button>
             </div>
 
@@ -658,7 +776,7 @@ export default function DashboardPage() {
               <button
                 onClick={() => setViewMode("table")}
                 title="Table / List View"
-                className={`p-1.5 rounded-lg transition-all ${
+                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
                   viewMode === "table"
                     ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
                     : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -669,7 +787,7 @@ export default function DashboardPage() {
               <button
                 onClick={() => setViewMode("grid")}
                 title="Grid View"
-                className={`p-1.5 rounded-lg transition-all ${
+                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
                   viewMode === "grid"
                     ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
                     : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -680,8 +798,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Search, Channel Dropdown, and Sort Controls */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pt-1">
+          {/* Search, Channel Dropdown, Skool Filter, and Sort Controls */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 pt-1">
             {/* Search bar */}
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
@@ -721,6 +839,40 @@ export default function DashboardPage() {
                     {ch.name}
                   </option>
                 ))}
+              </select>
+            </div>
+
+            {/* Skool Channel Status Filter Dropdown */}
+            <div className={`flex items-center gap-1.5 text-xs bg-white dark:bg-zinc-900 border rounded-xl px-3 py-2 transition-all ${
+              skoolFilter !== "all"
+                ? "border-amber-500/50 ring-1 ring-amber-500/30 text-amber-800 dark:text-amber-200"
+                : "border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400"
+            }`}>
+              <span className="font-semibold text-amber-500 text-[11px] shrink-0">Skool:</span>
+              <select
+                value={skoolFilter}
+                onChange={(e: any) => {
+                  const val = e.target.value;
+                  setSkoolFilter(val);
+                  if (val !== "all") {
+                    setStatusFilter("all");
+                  }
+                  setCurrentPage(1);
+                }}
+                className="w-full bg-transparent text-zinc-900 dark:text-zinc-100 focus:outline-none text-xs cursor-pointer truncate"
+              >
+                <option value="all" className="bg-white dark:bg-zinc-900">
+                  All ({skoolCounts.total})
+                </option>
+                <option value="unpublished" className="bg-white dark:bg-zinc-900">
+                  Unpublished ({skoolCounts.unpublished})
+                </option>
+                <option value="published" className="bg-white dark:bg-zinc-900">
+                  Published ({skoolCounts.published})
+                </option>
+                <option value="skipped" className="bg-white dark:bg-zinc-900">
+                  Skipped ({skoolCounts.skipped})
+                </option>
               </select>
             </div>
 
@@ -1252,31 +1404,68 @@ export default function DashboardPage() {
               }
             }}
             disabled={batchMutation.isPending}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition-all disabled:opacity-50 min-h-[44px]"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition-all disabled:opacity-50 min-h-[44px] cursor-pointer"
           >
             {batchMutation.isPending ? (
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
             ) : (
               <CheckCircle2 className="w-3.5 h-3.5" />
             )}
-            <span>Mark Done & Rename (-Done)</span>
+            <span>Mark Done (-Done)</span>
           </button>
 
           <button
             onClick={() => {
               if (
                 confirm(
-                  `Publish all configured channels for ${selectedIds.length} selected folders?`
+                  `Publish all configured channels (excluding Skool) for ${selectedIds.length} selected folders?`
                 )
               ) {
                 batchMutation.mutate("publish-all");
               }
             }}
             disabled={batchMutation.isPending}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white text-zinc-900 hover:bg-zinc-100 text-xs font-semibold shadow-sm transition-all disabled:opacity-50 min-h-[44px]"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white text-zinc-900 hover:bg-zinc-100 text-xs font-semibold shadow-sm transition-all disabled:opacity-50 min-h-[44px] cursor-pointer"
           >
             <Send className="w-3.5 h-3.5" />
             <span>Publish All</span>
+          </button>
+
+          {/* Skool Batch Actions */}
+          <button
+            onClick={() => {
+              if (
+                confirm(
+                  `Mark Skool as skipped for ${selectedIds.length} selected items?`
+                )
+              ) {
+                batchMutation.mutate("skip-skool");
+              }
+            }}
+            disabled={batchMutation.isPending}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold border border-zinc-700 shadow-sm transition-all disabled:opacity-50 min-h-[44px] cursor-pointer"
+            title="Mark Skool as skipped for selected items"
+          >
+            <MinusCircle className="w-3.5 h-3.5 text-zinc-400" />
+            <span>Skip Skool</span>
+          </button>
+
+          <button
+            onClick={() => {
+              if (
+                confirm(
+                  `Reset Skool to unpublished (draft) for ${selectedIds.length} selected items?`
+                )
+              ) {
+                batchMutation.mutate("unskip-skool");
+              }
+            }}
+            disabled={batchMutation.isPending}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-xs font-semibold border border-amber-500/30 shadow-sm transition-all disabled:opacity-50 min-h-[44px] cursor-pointer"
+            title="Reset Skool to unpublished for selected items"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+            <span>Unskip Skool</span>
           </button>
 
           <button

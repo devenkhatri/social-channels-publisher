@@ -1,5 +1,5 @@
 import { db, schema, checkpointDb } from "@/db";
-import { eq } from "drizzle-orm";
+import { eq, ne } from "drizzle-orm";
 import { encrypt, decrypt } from "@/lib/crypto";
 
 const ZERNIO_BASE_URL = process.env.ZERNIO_BASE_URL || "https://api.zernio.com/v1";
@@ -1247,4 +1247,300 @@ export async function getZernioPost(
   }
 
   return null;
+}
+
+export interface ZernioSyncResult {
+  totalZernioPosts: number;
+  matchedPosts: number;
+  updatedStatuses: number;
+  scheduledCount: number;
+  publishedCount: number;
+  failedCount: number;
+}
+
+/**
+ * Fetches all live posts from Zernio across all accounts, matches them with
+ * local channel posts, and updates their exact status (scheduled vs published vs failed),
+ * queue timestamps, and platform URLs.
+ */
+export async function syncZernioStatuses(): Promise<ZernioSyncResult> {
+  const accounts = await db.select().from(schema.zernioAccounts);
+  if (accounts.length === 0) {
+    return {
+      totalZernioPosts: 0,
+      matchedPosts: 0,
+      updatedStatuses: 0,
+      scheduledCount: 0,
+      publishedCount: 0,
+      failedCount: 0,
+    };
+  }
+
+  // 1. Fetch all posts across all accounts with pagination support
+  const allZernioPosts: Array<{
+    id: string;
+    zernioAccountId: string;
+    zernioAccountName: string;
+    title?: string | null;
+    content?: string | null;
+    scheduledFor?: string | null;
+    publishedAt?: string | null;
+    status: string;
+    platforms: Array<{
+      platform: string;
+      status?: string;
+      scheduledFor?: string | null;
+      publishedAt?: string | null;
+      platformPostUrl?: string | null;
+      platformPostId?: string | null;
+      username?: string | null;
+      errorMessage?: string | null;
+    }>;
+  }> = [];
+
+  for (const acc of accounts) {
+    let apiKey = "";
+    try {
+      apiKey = decrypt(acc.apiKey);
+    } catch {
+      continue;
+    }
+
+    let page = 1;
+    let hasMore = true;
+
+    while (hasMore) {
+      try {
+        const res = await fetch(`${ZERNIO_BASE_URL}/posts?limit=100&page=${page}`, {
+          headers: { Authorization: `Bearer ${apiKey}` },
+          cache: "no-store",
+        });
+
+        if (!res.ok) {
+          hasMore = false;
+          continue;
+        }
+
+        const data = await res.json();
+        const rawPosts = data.posts || [];
+
+        for (const p of rawPosts) {
+          allZernioPosts.push({
+            id: String(p._id || p.id),
+            zernioAccountId: acc.id,
+            zernioAccountName: acc.name,
+            title: p.title || null,
+            content: p.content || null,
+            scheduledFor: p.scheduledFor || null,
+            publishedAt: p.publishedAt || null,
+            status: p.status || "scheduled",
+            platforms: (p.platforms || []).map((pl: any) => {
+              const platName = pl.platform || "unknown";
+              let postUrl = pl.platformPostUrl || p.platformPostUrl || null;
+              const postId = pl.platformPostId || p.platformPostId || null;
+              const username = pl.accountId?.username || null;
+              if (!postUrl && postId) {
+                postUrl = constructPlatformPostUrl(platName, String(postId), username);
+              }
+              return {
+                platform: platName,
+                status: pl.status || p.status,
+                scheduledFor: pl.scheduledFor || p.scheduledFor || null,
+                publishedAt: pl.publishedAt || p.publishedAt || null,
+                platformPostUrl: postUrl,
+                platformPostId: postId ? String(postId) : null,
+                username,
+                errorMessage: pl.errorMessage || p.errorMessage || null,
+              };
+            }),
+          });
+        }
+
+        const totalPages = data.pagination?.pages || 1;
+        if (page >= totalPages || rawPosts.length === 0) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      } catch (fetchErr) {
+        console.warn(`[syncZernioStatuses] Failed to fetch page ${page} for account ${acc.name}:`, fetchErr);
+        hasMore = false;
+      }
+    }
+  }
+
+  // 2. Fetch all local non-skool channel posts from DB
+  const localPosts = await db
+    .select()
+    .from(schema.channelPosts)
+    .where(ne(schema.channelPosts.channel, "skool"));
+
+  let matchedPosts = 0;
+  let updatedStatuses = 0;
+  let scheduledCount = 0;
+  let publishedCount = 0;
+  let failedCount = 0;
+  const nowIso = new Date().toISOString();
+
+  // Track matched local post IDs to ensure 1-to-1 matching
+  const matchedLocalIds = new Set<string>();
+
+  for (const zp of allZernioPosts) {
+    const pl = zp.platforms?.[0];
+    let targetChannel = pl?.platform?.toLowerCase();
+
+    // Route LinkedIn Business Page vs Personal based on account name
+    if (
+      (zp.zernioAccountName?.toLowerCase().includes("biz") ||
+        zp.zernioAccountName?.toLowerCase().includes("page")) &&
+      targetChannel === "linkedin"
+    ) {
+      targetChannel = "linkedin_page";
+    }
+    if (targetChannel === "twitter" || targetChannel === "x") {
+      targetChannel = "threads";
+    }
+
+    // Matching Step 1: Match by zernioPostId
+    let match = localPosts.find((p) => p.zernioPostId === zp.id);
+
+    // Matching Step 2: Match by normalized title & target channel
+    if (!match && zp.title && targetChannel) {
+      const normZpTitle = zp.title.trim().toLowerCase();
+      match = localPosts.find((p) => {
+        if (p.channel !== targetChannel || !p.title || matchedLocalIds.has(p.id)) return false;
+        const normLocalTitle = p.title.trim().toLowerCase();
+        return (
+          normLocalTitle === normZpTitle ||
+          normLocalTitle.startsWith(normZpTitle) ||
+          normZpTitle.startsWith(normLocalTitle)
+        );
+      });
+    }
+
+    // Matching Step 3: Match by body content snippet & target channel
+    if (!match && zp.content && targetChannel) {
+      const snippet = zp.content.trim().slice(0, 80).toLowerCase().replace(/\s+/g, " ");
+      match = localPosts.find((p) => {
+        if (p.channel !== targetChannel || !p.body || matchedLocalIds.has(p.id)) return false;
+        const localSnippet = p.body.trim().slice(0, 150).toLowerCase().replace(/\s+/g, " ");
+        return localSnippet.includes(snippet.slice(0, 50));
+      });
+    }
+
+    if (!match) continue;
+
+    matchedPosts++;
+    matchedLocalIds.add(match.id);
+
+    // Determine status from Zernio post & platform
+    const zernioStatus = pl?.status || zp.status;
+    let finalStatus: "scheduled" | "published" | "failed" | "draft" = "draft";
+    if (zernioStatus === "scheduled" || zp.status === "scheduled") {
+      finalStatus = "scheduled";
+      scheduledCount++;
+    } else if (zernioStatus === "published" || zp.status === "published") {
+      finalStatus = "published";
+      publishedCount++;
+    } else if (zernioStatus === "failed" || zp.status === "failed") {
+      finalStatus = "failed";
+      failedCount++;
+    } else if (zernioStatus === "draft" || zp.status === "draft") {
+      finalStatus = "draft";
+    }
+
+    // Resolve post URL from platform response
+    let postUrl = pl?.platformPostUrl || match.platformPostUrl || null;
+    const platformPostId = pl?.platformPostId || match.platformPostId || null;
+    if (!postUrl && platformPostId && targetChannel) {
+      postUrl = constructPlatformPostUrl(targetChannel, String(platformPostId), pl?.username);
+    }
+
+    const scheduledFor = zp.scheduledFor || pl?.scheduledFor || match.scheduledFor || null;
+    const publishedAt =
+      finalStatus === "published"
+        ? pl?.publishedAt || zp.publishedAt || match.publishedAt || nowIso
+        : null;
+
+    const needsUpdate =
+      match.status !== finalStatus ||
+      match.zernioPostId !== zp.id ||
+      (finalStatus === "published" && postUrl && match.platformPostUrl !== postUrl) ||
+      (finalStatus === "scheduled" && scheduledFor && match.scheduledFor !== scheduledFor);
+
+    if (needsUpdate) {
+      await db
+        .update(schema.channelPosts)
+        .set({
+          status: finalStatus,
+          zernioPostId: zp.id,
+          zernioAccountId: zp.zernioAccountId || match.zernioAccountId,
+          scheduledFor,
+          publishedAt,
+          platformPostUrl: postUrl,
+          platformPostId: platformPostId ? String(platformPostId) : null,
+          errorMessage: finalStatus === "failed" ? (pl?.errorMessage || "Failed in Zernio") : null,
+          updatedAt: nowIso,
+        })
+        .where(eq(schema.channelPosts.id, match.id));
+
+      updatedStatuses++;
+    }
+  }
+
+  // 3. For any local post marked as 'scheduled' that has a zernioPostId
+  // but was NOT in the active Zernio posts list, check if it was deleted or published
+  const remainingScheduled = localPosts.filter(
+    (p) => p.status === "scheduled" && p.zernioPostId && !matchedLocalIds.has(p.id)
+  );
+
+  for (const p of remainingScheduled) {
+    try {
+      const livePost = await getZernioPost(p.zernioPostId!, p.zernioAccountId);
+      if (!livePost) {
+        // Post no longer exists in Zernio -> reset to draft
+        await db
+          .update(schema.channelPosts)
+          .set({
+            status: "draft",
+            scheduledFor: null,
+            publishedAt: null,
+            updatedAt: nowIso,
+          })
+          .where(eq(schema.channelPosts.id, p.id));
+        updatedStatuses++;
+      } else if (livePost.status !== p.status) {
+        let finalStatus = "draft";
+        if (livePost.status === "scheduled") finalStatus = "scheduled";
+        else if (livePost.status === "published") finalStatus = "published";
+        else if (livePost.status === "failed") finalStatus = "failed";
+
+        await db
+          .update(schema.channelPosts)
+          .set({
+            status: finalStatus,
+            scheduledFor: livePost.scheduledFor || null,
+            publishedAt: finalStatus === "published" ? (livePost.publishedAt || nowIso) : null,
+            platformPostUrl: livePost.platformPostUrl || p.platformPostUrl,
+            platformPostId: livePost.platformPostId || p.platformPostId,
+            updatedAt: nowIso,
+          })
+          .where(eq(schema.channelPosts.id, p.id));
+        updatedStatuses++;
+      }
+    } catch {
+      // Ignore individual lookup errors
+    }
+  }
+
+  checkpointDb();
+
+  return {
+    totalZernioPosts: allZernioPosts.length,
+    matchedPosts,
+    updatedStatuses,
+    scheduledCount,
+    publishedCount,
+    failedCount,
+  };
 }

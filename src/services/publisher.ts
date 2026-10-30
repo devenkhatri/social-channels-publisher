@@ -56,25 +56,14 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
 
   const contentItem = contentItems[0];
 
-  // Skool is manual copy-paste
+  // Skool is published separately via the Skool tab, not via Zernio queue
   if (post.channel === "skool") {
-    const nowIso = new Date().toISOString();
-    await db
-      .update(schema.channelPosts)
-      .set({
-        status: "published",
-        publishedAt: nowIso,
-        updatedAt: nowIso,
-      })
-      .where(eq(schema.channelPosts.id, post.id));
-
-    const renamed = await checkAndRenameFolderIfDone(contentItem.id);
     return {
       success: true,
       postId: post.id,
       channel: "skool",
-      folderRenamed: renamed,
-      message: "Marked Skool post as published (manual distribution).",
+      folderRenamed: false,
+      message: "Skool is published separately via the Skool tab.",
     };
   }
 
@@ -706,13 +695,15 @@ export async function checkAndRenameFolderIfDone(contentItemId: string): Promise
     .from(schema.channelPosts)
     .where(eq(schema.channelPosts.contentItemId, contentItemId));
 
-  // Consider all published if no non-draft / failed posts remain
-  // Or if at least YouTube, LinkedIn, Instagram, Facebook are published (or draft is ignored)
-  const allPublished = posts.every(
-    (p) => p.status === "published" || p.status === "scheduled"
-  );
+  // Skool does not impact the "Done" status. Check that all Zernio channels are published or queued
+  const zernioPosts = posts.filter((p) => p.channel !== "skool");
+  const allPublished =
+    zernioPosts.length > 0 &&
+    zernioPosts.every(
+      (p) => p.status === "published" || p.status === "scheduled"
+    );
 
-  if (allPublished && posts.length > 0) {
+  if (allPublished) {
     try {
       const newFolderName = `${item.originalFolderName}-Done`;
       await renameFolder(item.driveItemId, newFolderName);

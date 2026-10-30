@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { publishChannelPost, checkAndRenameFolderIfDone } from "@/services/publisher";
 import { db, schema } from "@/db";
-import { eq } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import { renameFolder } from "@/services/onedrive";
 
 export async function POST(request: NextRequest) {
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
         })
         .where(eq(schema.contentItems.id, contentItemId));
 
-      // Mark all posts as published
+      // Mark all Zernio posts as published (keep Skool as draft)
       await db
         .update(schema.channelPosts)
         .set({
@@ -49,7 +49,12 @@ export async function POST(request: NextRequest) {
           publishedAt: nowIso,
           updatedAt: nowIso,
         })
-        .where(eq(schema.channelPosts.contentItemId, contentItemId));
+        .where(
+          and(
+            eq(schema.channelPosts.contentItemId, contentItemId),
+            ne(schema.channelPosts.channel, "skool")
+          )
+        );
 
       return NextResponse.json({
         success: true,
@@ -74,7 +79,7 @@ export async function POST(request: NextRequest) {
         .where(eq(schema.channelPosts.contentItemId, contentItemId));
 
       const pendingPosts = posts.filter(
-        (p) => p.status !== "published" && p.status !== "scheduled"
+        (p) => p.channel !== "skool" && p.status !== "published" && p.status !== "scheduled"
       );
 
       if (pendingPosts.length === 0) {

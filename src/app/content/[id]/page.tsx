@@ -30,6 +30,7 @@ import {
   Download,
   Link2,
   Building2,
+  MinusCircle,
 } from "lucide-react";
 import { CollapsibleCard } from "@/components/ui/CollapsibleCard";
 import { parseThreadItems } from "@/services/extractor";
@@ -310,6 +311,9 @@ export default function ContentDetailPage({
   }, [activeChannel, data, formState]);
 
   const currentPost = data?.posts.find((p) => p.channel === activeChannel);
+  const youtubePost = data?.posts.find((p) => p.channel === "youtube");
+  const youtubePostUrl = youtubePost?.platformPostUrl?.trim() || "";
+  const hasYouTubeUrl = Boolean(youtubePostUrl);
   const currentForm = formState[activeChannel] || {
     title: "",
     body: "",
@@ -462,6 +466,101 @@ export default function ContentDetailPage({
     },
   });
 
+  // Check live status from Zernio
+  const checkZernioStatusMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/zernio/sync", { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to check Zernio status");
+      return json;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["content-detail", id] });
+      queryClient.invalidateQueries({ queryKey: ["content-items"] });
+      setToastMessage({
+        text: "Updated latest post status from Zernio!",
+        type: "success",
+      });
+      setTimeout(() => setToastMessage(null), 3500);
+    },
+    onError: (err: any) => {
+      setToastMessage({
+        text: err.message || "Failed to check status",
+        type: "error",
+      });
+      setTimeout(() => setToastMessage(null), 4000);
+    },
+  });
+
+  // Skool categories query
+  const { data: skoolCategoriesData } = useQuery<{
+    categories: Array<{ id: string; name: string; color?: string }>;
+  }>({
+    queryKey: ["skool-categories"],
+    queryFn: async () => {
+      const res = await fetch("/api/skool/categories");
+      if (!res.ok) return { categories: [] };
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 30, // 30 minutes
+  });
+
+  const [selectedSkoolLabel, setSelectedSkoolLabel] = useState<string>("");
+
+  // Publish to Skool with YouTube video mutation (via Apify Actor)
+  const publishSkoolMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentPost) return;
+      if (!youtubePostUrl) {
+        throw new Error("Cannot publish to Skool without a YouTube video URL.");
+      }
+
+      // 1. Save draft changes first
+      const saveRes = await fetch(`/api/posts/${currentPost.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(currentForm),
+      });
+      if (!saveRes.ok) {
+        const errJson = await saveRes.json();
+        throw new Error(errJson.error || "Failed to save draft before publishing");
+      }
+
+      // 2. Publish to Skool with YouTube URL
+      const res = await fetch(`/api/content/${id}/publish-skool`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: currentForm.title,
+          body: currentForm.body,
+          labelId: selectedSkoolLabel || undefined,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || "Skool publishing failed");
+      }
+      return json;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["content-detail", id] });
+      queryClient.invalidateQueries({ queryKey: ["content-items"] });
+      setToastMessage({
+        text: "Successfully published to Skool community with YouTube video!",
+        type: "success",
+      });
+      setTimeout(() => setToastMessage(null), 4000);
+    },
+    onError: (err: any) => {
+      setToastMessage({
+        text: err.message || "Failed to publish to Skool",
+        type: "error",
+      });
+      setTimeout(() => setToastMessage(null), 6000);
+    },
+  });
+
   // Mark as Done and rename folder on OneDrive mutation
   const markDoneMutation = useMutation({
     mutationFn: async () => {
@@ -538,7 +637,7 @@ export default function ContentDetailPage({
     }
 
     const pendingPosts = data.posts.filter(
-      (p) => p.status !== "published" && p.status !== "scheduled"
+      (p) => p.channel !== "skool" && p.status !== "published" && p.status !== "scheduled"
     );
 
     if (pendingPosts.length === 0) {
@@ -630,9 +729,9 @@ export default function ContentDetailPage({
     }
   };
 
-  // Single channel status manual toggle mutation (e.g. Mark as Done / Undo)
+  // Single channel status manual toggle mutation (e.g. Mark as Done / Skip / Undo)
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ postId, status }: { postId: string; status: "draft" | "published" }) => {
+    mutationFn: async ({ postId, status }: { postId: string; status: "draft" | "published" | "skipped" }) => {
       const res = await fetch(`/api/posts/${postId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -646,7 +745,12 @@ export default function ContentDetailPage({
       queryClient.invalidateQueries({ queryKey: ["content-detail", id] });
       queryClient.invalidateQueries({ queryKey: ["content-items"] });
       setToastMessage({
-        text: variables.status === "published" ? "Channel marked as Published!" : "Channel reset to Pending.",
+        text:
+          variables.status === "published"
+            ? "Channel marked as Published!"
+            : variables.status === "skipped"
+            ? "Channel marked as Skipped."
+            : "Channel status reset to Unpublished.",
         type: "success",
       });
       setTimeout(() => setToastMessage(null), 3500);
@@ -710,18 +814,19 @@ export default function ContentDetailPage({
     { id: "youtube", name: "YouTube", shortName: "YouTube", badge: "Shorts / Video", shortLabel: "YT" },
     { id: "instagram", name: "Instagram", shortName: "Instagram", badge: "Reel / Carousel", shortLabel: "IG" },
     { id: "facebook", name: "Facebook", shortName: "Facebook", badge: "Reel / Feed", shortLabel: "FB" },
-    { id: "skool", name: "Skool", shortName: "Skool", badge: "Manual Copy", shortLabel: "SK" },
+    { id: "skool", name: "Skool", shortName: "Skool", badge: hasYouTubeUrl ? "YouTube Ready" : "Community", shortLabel: "SK" },
   ];
 
   const publishedPosts = posts.filter((p) => p.status === "published");
   const scheduledPosts = posts.filter((p) => p.status === "scheduled");
   const failedPosts = posts.filter((p) => p.status === "failed");
-  const pendingPosts = posts.filter((p) => p.status !== "published" && p.status !== "scheduled");
+  // Skool does not impact the Zernio queue / Publish All completion
+  const pendingPosts = posts.filter((p) => p.channel !== "skool" && p.status !== "published" && p.status !== "scheduled");
   const publishedCount = publishedPosts.length;
   const scheduledCount = scheduledPosts.length;
   const failedCount = failedPosts.length;
   const pendingCount = pendingPosts.length;
-  const totalChannels = channelList.length;
+  const totalChannels = channelList.filter((c) => c.id !== "skool").length;
 
   const sourceFileBadge = (() => {
     if (activeChannel === "facebook") {
@@ -1130,6 +1235,7 @@ export default function ContentDetailPage({
             const isPub = post?.status === "published";
             const isSched = post?.status === "scheduled";
             const isFail = post?.status === "failed";
+            const isSkipped = post?.status === "skipped";
             const isActive = activeChannel === ch.id;
 
             return (
@@ -1146,11 +1252,13 @@ export default function ContentDetailPage({
                     ? "bg-rose-50/50 dark:bg-rose-950/20 border-rose-500/30 hover:border-rose-500/50"
                     : isSched
                     ? "bg-sky-50/50 dark:bg-sky-950/20 border-sky-500/30 hover:border-sky-500/50"
+                    : isSkipped
+                    ? "bg-zinc-100/50 dark:bg-zinc-900/40 border-zinc-200/60 dark:border-zinc-800/60 opacity-60 hover:opacity-100"
                     : "bg-zinc-50 dark:bg-zinc-950/60 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
                 }`}
               >
                 <div className="flex items-center justify-between gap-1 mb-1.5">
-                  <span className="text-[11px] font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                  <span className={`text-[11px] font-semibold text-zinc-900 dark:text-zinc-100 truncate ${isSkipped ? "line-through text-zinc-400 dark:text-zinc-500" : ""}`}>
                     {ch.shortName}
                   </span>
                   {isPub ? (
@@ -1173,6 +1281,8 @@ export default function ContentDetailPage({
                     <Clock className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
                   ) : isFail ? (
                     <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                  ) : isSkipped ? (
+                    <MinusCircle className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
                   ) : (
                     <span className="w-2.5 h-2.5 rounded-full border border-zinc-300 dark:border-zinc-600 bg-zinc-200 dark:bg-zinc-800 shrink-0" />
                   )}
@@ -1187,10 +1297,12 @@ export default function ContentDetailPage({
                         ? "text-sky-600 dark:text-sky-400"
                         : isFail
                         ? "text-rose-600 dark:text-rose-400"
+                        : isSkipped
+                        ? "text-zinc-400 dark:text-zinc-500"
                         : "text-zinc-500 dark:text-zinc-400"
                     }`}
                   >
-                    {isPub ? "Done" : isSched ? "Queued" : isFail ? "Failed" : "Pending"}
+                    {isPub ? "Done" : isSched ? "Queued" : isFail ? "Failed" : isSkipped ? "Skipped" : "Pending"}
                   </span>
                   <span className="text-zinc-400 dark:text-zinc-500 font-mono text-[9px] truncate" title={ch.badge}>
                     {ch.badge}
@@ -1603,6 +1715,8 @@ export default function ContentDetailPage({
                     ? "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/25"
                     : currentPost?.status === "publishing"
                     ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/25 animate-pulse"
+                    : currentPost?.status === "skipped"
+                    ? "bg-zinc-200/50 dark:bg-zinc-800/50 text-zinc-500 dark:text-zinc-400 border-dashed border-zinc-300 dark:border-zinc-700"
                     : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700"
                 }`}
               >
@@ -1610,7 +1724,9 @@ export default function ContentDetailPage({
                   ? currentPost.scheduledFor
                     ? `Queued (${new Date(currentPost.scheduledFor).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })})`
                     : "Queued"
-                  : currentPost?.status || "draft"}
+                  : currentPost?.status === "draft"
+                  ? "unpublished"
+                  : currentPost?.status || "unpublished"}
               </span>
             }
             headerActions={
@@ -1760,14 +1876,27 @@ export default function ContentDetailPage({
                     </div>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => updateStatusMutation.mutate({ postId: currentPost.id, status: "draft" })}
-                  disabled={updateStatusMutation.isPending}
-                  className="px-2.5 py-1.5 min-h-[36px] rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-800 dark:text-sky-200 text-[11px] font-medium border border-sky-500/40 transition-colors shrink-0 ml-2"
-                >
-                  {updateStatusMutation.isPending ? "Updating..." : "Reset to Draft"}
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                  <button
+                    type="button"
+                    onClick={() => checkZernioStatusMutation.mutate()}
+                    disabled={checkZernioStatusMutation.isPending}
+                    className="flex items-center gap-1 px-2.5 py-1.5 min-h-[36px] rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-800 dark:text-sky-200 text-[11px] font-medium border border-sky-500/40 transition-colors cursor-pointer disabled:opacity-50"
+                    title="Check if Zernio has published this queued post"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${checkZernioStatusMutation.isPending ? "animate-spin" : ""}`} />
+                    <span>{checkZernioStatusMutation.isPending ? "Checking..." : "Check Status"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateStatusMutation.mutate({ postId: currentPost.id, status: "draft" })}
+                    disabled={updateStatusMutation.isPending}
+                    className="px-2.5 py-1.5 min-h-[36px] rounded-lg bg-zinc-200/60 dark:bg-zinc-800/60 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-[11px] font-medium border border-zinc-300 dark:border-zinc-700 transition-colors cursor-pointer disabled:opacity-50"
+                    title="Reset post status to draft locally"
+                  >
+                    {updateStatusMutation.isPending ? "Updating..." : "Reset to Draft"}
+                  </button>
+                </div>
               </div>
             ) : currentPost?.status === "failed" ? (
               <div className="flex items-center justify-between p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-900 dark:text-rose-200 text-xs shadow-xs">
@@ -1796,22 +1925,63 @@ export default function ContentDetailPage({
                   Dismiss
                 </button>
               </div>
+            ) : currentPost?.status === "skipped" ? (
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-500/10 border border-zinc-500/30 text-zinc-800 dark:text-zinc-200 text-xs shadow-xs">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-zinc-500/20 flex items-center justify-center shrink-0">
+                    <MinusCircle className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                      <span>
+                        Skipped for {activeChannel === "skool" ? "Skool" : activeChannel}
+                      </span>
+                      <span className="text-[10px] bg-zinc-500/20 text-zinc-700 dark:text-zinc-300 px-1.5 py-0.5 rounded font-mono font-semibold">
+                        SKIPPED
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
+                      This post is marked as skipped and will not be published to this channel.
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => updateStatusMutation.mutate({ postId: currentPost.id, status: "draft" })}
+                  disabled={updateStatusMutation.isPending}
+                  className="px-2.5 py-1.5 min-h-[36px] rounded-lg bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-[11px] font-medium border border-zinc-300 dark:border-zinc-700 transition-colors shrink-0 ml-2 cursor-pointer"
+                  title="Unskip and set back to Unpublished"
+                >
+                  {updateStatusMutation.isPending ? "Updating..." : "Unskip (Set to Unpublished)"}
+                </button>
+              </div>
             ) : (
               <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                  <span className="font-medium">Pending: Not published yet on this channel.</span>
+                  <span className="font-medium">Unpublished: Not published yet on this channel.</span>
                 </div>
                 {currentPost && (
-                  <button
-                    type="button"
-                    onClick={() => updateStatusMutation.mutate({ postId: currentPost.id, status: "published" })}
-                    disabled={updateStatusMutation.isPending}
-                    className="px-2.5 py-1 min-h-[32px] rounded-lg bg-zinc-200 dark:bg-zinc-800 hover:bg-emerald-500/20 text-zinc-800 dark:text-zinc-300 hover:text-emerald-700 dark:hover:text-emerald-300 text-[11px] font-medium border border-zinc-300 dark:border-zinc-700 hover:border-emerald-500/30 transition-colors"
-                    title="Mark this channel as published if completed elsewhere"
-                  >
-                    {updateStatusMutation.isPending ? "Updating..." : "Mark as Done"}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => updateStatusMutation.mutate({ postId: currentPost.id, status: "skipped" })}
+                      disabled={updateStatusMutation.isPending}
+                      className="px-2.5 py-1 min-h-[32px] rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-[11px] font-medium border border-zinc-200 dark:border-zinc-700 transition-colors cursor-pointer"
+                      title="Skip publishing this post on this channel"
+                    >
+                      {updateStatusMutation.isPending ? "Updating..." : "Skip"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateStatusMutation.mutate({ postId: currentPost.id, status: "published" })}
+                      disabled={updateStatusMutation.isPending}
+                      className="px-2.5 py-1 min-h-[32px] rounded-lg bg-zinc-200 dark:bg-zinc-800 hover:bg-emerald-500/20 text-zinc-800 dark:text-zinc-300 hover:text-emerald-700 dark:hover:text-emerald-300 text-[11px] font-medium border border-zinc-300 dark:border-zinc-700 hover:border-emerald-500/30 transition-colors cursor-pointer"
+                      title="Mark this channel as published if completed elsewhere"
+                    >
+                      {updateStatusMutation.isPending ? "Updating..." : "Mark as Done"}
+                    </button>
+                  </div>
                 )}
               </div>
             )}
@@ -1853,6 +2023,47 @@ export default function ContentDetailPage({
               <div className="flex items-center gap-2 text-[11px] text-zinc-500 dark:text-zinc-400 -mt-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
                 <span>Content edits here are automatically shared with your <strong>LinkedIn Business Page</strong></span>
+              </div>
+            )}
+            {activeChannel === "skool" && (
+              <div className="space-y-2">
+                {hasYouTubeUrl ? (
+                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs shadow-xs space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="font-semibold text-amber-950 dark:text-amber-100 flex items-center gap-1.5">
+                          <Video className="w-4 h-4 text-rose-500 shrink-0" />
+                          YouTube Video Available for Skool
+                        </span>
+                      </div>
+                      <span className="text-[10px] bg-amber-500/20 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-medium">
+                        1-Click Post Enabled
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                      The live YouTube URL will be automatically appended to your Skool post body, embedding the interactive video player:
+                    </p>
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-white/70 dark:bg-zinc-900/70 border border-amber-500/20">
+                      <a
+                        href={youtubePostUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-mono text-amber-700 dark:text-amber-400 hover:underline truncate flex-1 flex items-center gap-1.5"
+                      >
+                        <span>{youtubePostUrl}</span>
+                        <ExternalLink className="w-3 h-3 shrink-0" />
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs flex items-center gap-2.5">
+                    <AlertCircle className="w-4 h-4 text-zinc-400 shrink-0" />
+                    <span>
+                      Publish your YouTube post or enter the live YouTube URL in the <strong>YouTube tab</strong> to enable automated 1-click publishing to Skool.
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 
@@ -2331,81 +2542,185 @@ export default function ContentDetailPage({
               </div>
               <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
                 {activeChannel === "skool"
-                  ? "Paste your Skool community post link here after manual publishing to easily access it anytime."
+                  ? "Live URL of this post on Skool. Automatically populated when published, or can be entered manually."
                   : "Live URL of this channel's post. Automatically populated from Zernio upon publish, or can be entered manually."}
               </p>
             </div>
 
             {/* Actions Bar */}
-            <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <button
-                type="button"
-                disabled={savePostMutation.isPending}
-                onClick={() => savePostMutation.mutate()}
-                className="flex items-center justify-center gap-1.5 px-4 py-2 min-h-[44px] rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-medium border border-zinc-200 dark:border-zinc-700 transition-colors disabled:opacity-50"
-              >
-                {savePostMutation.isPending ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Save className="w-3.5 h-3.5 text-zinc-500" />
-                )}
-                <span>Save Draft</span>
-              </button>
-
-              {activeChannel !== "skool" ? (
-                <button
-                  type="button"
-                  disabled={publishMutation.isPending}
-                  onClick={() => publishMutation.mutate()}
-                  className={`flex items-center justify-center gap-2 px-5 py-2 min-h-[44px] rounded-xl text-xs font-semibold shadow-xs transition-all disabled:opacity-50 ${
-                    currentPost?.status === "published"
-                      ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700"
-                      : "bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900"
-                  }`}
-                >
-                  {publishMutation.isPending ? (
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  ) : currentPost?.status === "published" ? (
-                    <RotateCcw className="w-3.5 h-3.5 text-zinc-500" />
-                  ) : (
-                    <Clock className="w-3.5 h-3.5" />
-                  )}
-                  <span>
-                    {currentPost?.status === "published"
-                      ? "Re-publish to"
-                      : currentPost?.status === "scheduled"
-                      ? "Re-queue to"
-                      : "Queue to"}{" "}
-                    {activeChannel === "linkedin_page"
-                      ? "LinkedIn Page"
-                      : activeChannel === "threads"
-                      ? "Threads"
-                      : activeChannel}
-                  </span>
-                </button>
-              ) : (
-                <div className="flex items-center gap-2">
+            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800 space-y-3">
+              {/* Row 1: Editing & Helper Controls */}
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Save Draft */}
                   <button
                     type="button"
-                    onClick={() => {
-                      copyToClipboard(
-                        `${currentForm.title}\n\n${currentForm.body}`,
-                        "all"
-                      );
-                    }}
-                    className="flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-semibold border border-amber-500/30 transition-all"
+                    disabled={savePostMutation.isPending}
+                    onClick={() => savePostMutation.mutate()}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 h-9 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-medium border border-zinc-200 dark:border-zinc-700 transition-colors disabled:opacity-50 whitespace-nowrap cursor-pointer"
                   >
-                    {copiedField === "all" ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    {savePostMutation.isPending ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                     ) : (
-                      <Copy className="w-3.5 h-3.5" />
+                      <Save className="w-3.5 h-3.5 text-zinc-500" />
+                    )}
+                    <span>Save Draft</span>
+                  </button>
+
+                  {/* Copy Title & Body (Skool only) */}
+                  {activeChannel === "skool" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        copyToClipboard(
+                          `${currentForm.title}\n\n${currentForm.body}`,
+                          "all"
+                        );
+                      }}
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 h-9 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-medium border border-zinc-200 dark:border-zinc-700 transition-all cursor-pointer whitespace-nowrap"
+                      title="Copy post title and body to clipboard"
+                    >
+                      {copiedField === "all" ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                      <span>
+                        {copiedField === "all"
+                          ? "Copied!"
+                          : "Copy Title & Body"}
+                      </span>
+                    </button>
+                  )}
+
+                  {/* Skip / Unskip Toggle (Skool only) */}
+                  {activeChannel === "skool" && currentPost && (
+                    currentPost.status === "skipped" ? (
+                      <button
+                        type="button"
+                        disabled={updateStatusMutation.isPending}
+                        onClick={() => updateStatusMutation.mutate({ postId: currentPost.id, status: "draft" })}
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 h-9 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-200 text-xs font-medium border border-amber-500/30 transition-all cursor-pointer whitespace-nowrap"
+                        title="Unskip this post (set back to unpublished draft)"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                        <span>Unskip Skool</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={updateStatusMutation.isPending}
+                        onClick={() => updateStatusMutation.mutate({ postId: currentPost.id, status: "skipped" })}
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 h-9 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-medium border border-zinc-200 dark:border-zinc-700 transition-all cursor-pointer whitespace-nowrap"
+                        title="Skip publishing this post to Skool"
+                      >
+                        <MinusCircle className="w-3.5 h-3.5 text-zinc-500" />
+                        <span>Skip Skool</span>
+                      </button>
+                    )
+                  )}
+                </div>
+
+                {/* Non-Skool Primary Publishing Button */}
+                {activeChannel !== "skool" && (
+                  <button
+                    type="button"
+                    disabled={publishMutation.isPending}
+                    onClick={() => publishMutation.mutate()}
+                    className={`inline-flex items-center justify-center gap-2 px-5 py-2 h-9 rounded-xl text-xs font-semibold shadow-xs transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer ${
+                      currentPost?.status === "published"
+                        ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700"
+                        : "bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900"
+                    }`}
+                  >
+                    {publishMutation.isPending ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : currentPost?.status === "published" ? (
+                      <RotateCcw className="w-3.5 h-3.5 text-zinc-500" />
+                    ) : (
+                      <Clock className="w-3.5 h-3.5" />
                     )}
                     <span>
-                      {copiedField === "all"
-                        ? "Copied Full Post!"
-                        : "Copy Title & Body"}
+                      {currentPost?.status === "published"
+                        ? "Re-publish to"
+                        : currentPost?.status === "scheduled"
+                        ? "Re-queue to"
+                        : "Queue to"}{" "}
+                      {activeChannel === "linkedin_page"
+                        ? "LinkedIn Page"
+                        : activeChannel === "threads"
+                        ? "Threads"
+                        : activeChannel}
                     </span>
                   </button>
+                )}
+              </div>
+
+              {/* Dedicated Skool Apify Publishing Action Box */}
+              {activeChannel === "skool" && (
+                <div className="p-3 rounded-xl bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {hasYouTubeUrl ? (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                        <span className="text-xs font-medium text-zinc-800 dark:text-zinc-200 truncate">
+                          YouTube video attached. 1-click publish ready.
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                        <span className="text-xs text-amber-700 dark:text-amber-300">
+                          YouTube URL required to publish to Skool community.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {hasYouTubeUrl && (
+                    <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
+                      {skoolCategoriesData?.categories && skoolCategoriesData.categories.length > 0 && (
+                        <select
+                          value={selectedSkoolLabel}
+                          onChange={(e) => setSelectedSkoolLabel(e.target.value)}
+                          className="px-2.5 py-1.5 h-9 rounded-xl text-xs bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium cursor-pointer max-w-[170px] truncate"
+                          title="Select Skool Category"
+                        >
+                          <option value="">Default Category</option>
+                          {skoolCategoriesData.categories.map((cat) => (
+                            <option key={cat.id} value={cat.id}>
+                              {cat.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+
+                      <button
+                        type="button"
+                        disabled={publishSkoolMutation.isPending}
+                        onClick={() => publishSkoolMutation.mutate()}
+                        className={`inline-flex items-center justify-center gap-2 px-4 py-2 h-9 rounded-xl text-xs font-semibold shadow-xs transition-all disabled:opacity-50 cursor-pointer whitespace-nowrap ${
+                          currentPost?.status === "published"
+                            ? "bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-200 border border-amber-500/40"
+                            : "bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold shadow-amber-500/20 hover:shadow-md"
+                        }`}
+                        title="Publish post with embedded YouTube video to Skool community via Apify"
+                      >
+                        {publishSkoolMutation.isPending ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Send className="w-3.5 h-3.5" />
+                        )}
+                        <span>
+                          {publishSkoolMutation.isPending
+                            ? "Publishing to Skool..."
+                            : currentPost?.status === "published"
+                            ? "Re-publish to Skool"
+                            : "Publish to Skool"}
+                        </span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

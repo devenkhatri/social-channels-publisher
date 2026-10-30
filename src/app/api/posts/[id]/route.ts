@@ -35,7 +35,7 @@ export async function PATCH(
       if (body.status === "published") {
         updateData.publishedAt = body.publishedAt || new Date().toISOString();
         updateData.errorMessage = null;
-      } else if (body.status === "draft") {
+      } else if (body.status === "draft" || body.status === "skipped") {
         updateData.publishedAt = null;
         updateData.scheduledFor = null;
         updateData.errorMessage = null;

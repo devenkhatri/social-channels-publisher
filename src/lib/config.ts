@@ -11,6 +11,11 @@ const envSchema = z.object({
   AZURE_CLIENT_SECRET: z.string().optional().default(""),
   AZURE_TENANT_ID: z.string().optional().default("common"),
   AZURE_REDIRECT_URI: z.string().optional().default("http://localhost:3000/auth/microsoft/callback"),
+  APIFY_API_TOKEN: z.string().optional().default(""),
+  SKOOL_GROUP_SLUG: z.string().optional().default(""),
+  SKOOL_EMAIL: z.string().optional().default(""),
+  SKOOL_PASSWORD: z.string().optional().default(""),
+  SKOOL_LABEL_ID: z.string().optional().default(""),
 });
 
 export const config = envSchema.parse({
@@ -24,4 +29,9 @@ export const config = envSchema.parse({
   AZURE_CLIENT_SECRET: process.env.AZURE_CLIENT_SECRET,
   AZURE_TENANT_ID: process.env.AZURE_TENANT_ID,
   AZURE_REDIRECT_URI: process.env.AZURE_REDIRECT_URI,
+  APIFY_API_TOKEN: process.env.APIFY_API_TOKEN,
+  SKOOL_GROUP_SLUG: process.env.SKOOL_GROUP_SLUG,
+  SKOOL_EMAIL: process.env.SKOOL_EMAIL,
+  SKOOL_PASSWORD: process.env.SKOOL_PASSWORD,
+  SKOOL_LABEL_ID: process.env.SKOOL_LABEL_ID,
 });
