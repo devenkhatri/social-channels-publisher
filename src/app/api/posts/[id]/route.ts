@@ -43,6 +43,8 @@ export async function PATCH(
     }
     if (body.scheduledFor !== undefined) updateData.scheduledFor = body.scheduledFor;
     if (body.publishedAt !== undefined) updateData.publishedAt = body.publishedAt;
+    if (body.platformPostUrl !== undefined) updateData.platformPostUrl = body.platformPostUrl || null;
+    if (body.platformPostId !== undefined) updateData.platformPostId = body.platformPostId || null;
     if (body.errorMessage !== undefined) updateData.errorMessage = body.errorMessage;
 
     // Handle account, profile, and connection gracefully to avoid FK constraints

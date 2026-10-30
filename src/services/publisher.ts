@@ -4,6 +4,7 @@ import {
   getDecryptedApiKey,
   uploadMediaToZernio,
   publishPostToZernio,
+  constructPlatformPostUrl,
   ZernioPublishPayload,
   ZernioMediaItem,
 } from "./zernio";
@@ -21,6 +22,7 @@ export interface PublishResult {
   success: boolean;
   postId?: string;
   zernioPostId?: string;
+  platformPostUrl?: string | null;
   channel: string;
   folderRenamed: boolean;
   message: string;
@@ -605,6 +607,15 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
     const isScheduled = zernioRes.status === "scheduled" || Boolean(payload.queuedFromProfile);
     const assignedSlot = zernioRes.scheduledFor || post.scheduledFor || null;
 
+    // Resolve post URL from zernio response if available
+    const rawPostObj = zernioRes.rawResponse?.post || zernioRes.rawResponse?.data || zernioRes.rawResponse;
+    const plObj = rawPostObj?.platforms?.[0];
+    let resolvedPostUrl = plObj?.platformPostUrl || rawPostObj?.platformPostUrl || null;
+    const resolvedPostId = plObj?.platformPostId || rawPostObj?.platformPostId || null;
+    if (!resolvedPostUrl && resolvedPostId) {
+      resolvedPostUrl = constructPlatformPostUrl(post.channel, String(resolvedPostId), plObj?.accountId?.username);
+    }
+
     await db
       .update(schema.channelPosts)
       .set({
@@ -615,6 +626,8 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
         zernioConnectionId,
         scheduledFor: assignedSlot,
         publishedAt: isScheduled ? null : nowIso,
+        platformPostUrl: resolvedPostUrl,
+        platformPostId: resolvedPostId ? String(resolvedPostId) : null,
         errorMessage: null,
         updatedAt: nowIso,
       })
@@ -630,7 +643,7 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
       title: isScheduled ? `Queued for ${post.channel}` : `Published to ${post.channel}`,
       description: isScheduled && formattedSlot
         ? `Added to default queue. Next slot: ${formattedSlot} (Post ID: ${zernioRes.id})`
-        : `Post ID: ${zernioRes.id}`,
+        : `Post ID: ${zernioRes.id}${resolvedPostUrl ? ` (${resolvedPostUrl})` : ""}`,
       contentItemId: contentItem.id,
       channel: post.channel,
       status: "success",
@@ -640,6 +653,7 @@ export async function publishChannelPost(channelPostId: string): Promise<Publish
       success: true,
       postId: post.id,
       zernioPostId: zernioRes.id,
+      platformPostUrl: resolvedPostUrl,
       channel: post.channel,
       folderRenamed,
       message: isScheduled && formattedSlot

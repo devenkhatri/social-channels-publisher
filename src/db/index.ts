@@ -151,6 +151,8 @@ export async function ensureDbInitialized() {
     try { await client.execute("ALTER TABLE zernio_profiles ADD COLUMN is_default INTEGER DEFAULT 0;"); } catch {}
     try { await client.execute("ALTER TABLE zernio_profiles ADD COLUMN color TEXT;"); } catch {}
     try { await client.execute("ALTER TABLE channel_posts ADD COLUMN zernio_connection_id TEXT;"); } catch {}
+    try { await client.execute("ALTER TABLE channel_posts ADD COLUMN platform_post_url TEXT;"); } catch {}
+    try { await client.execute("ALTER TABLE channel_posts ADD COLUMN platform_post_id TEXT;"); } catch {}
     isInitialized = true;
   } catch (e) {
     console.warn("DB bootstrap warning:", e);

@@ -1173,3 +1173,78 @@ export async function deleteZernioQueuedPost(
 
   return true;
 }
+
+/**
+ * Fetches a single post by ID from Zernio to inspect its live status and post URL
+ */
+export async function getZernioPost(
+  postId: string,
+  accountId?: string | null
+): Promise<{
+  id: string;
+  status: string;
+  scheduledFor?: string | null;
+  publishedAt?: string | null;
+  platformPostUrl?: string | null;
+  platformPostId?: string | null;
+  rawResponse?: any;
+} | null> {
+  const accounts = await db.select().from(schema.zernioAccounts);
+  if (accounts.length === 0) return null;
+
+  // Prioritize matching account ID if provided
+  const targetAccounts = accountId
+    ? [
+        ...accounts.filter((a) => a.id === accountId),
+        ...accounts.filter((a) => a.id !== accountId),
+      ]
+    : accounts;
+
+  for (const acc of targetAccounts) {
+    let apiKey = "";
+    try {
+      apiKey = decrypt(acc.apiKey);
+    } catch {
+      continue;
+    }
+
+    try {
+      const res = await fetch(`${ZERNIO_BASE_URL}/posts/${postId}`, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+        cache: "no-store",
+        signal: AbortSignal.timeout(4000),
+      });
+
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      const p = data.post || data;
+      const pl = p.platforms?.[0];
+
+      let postUrl = pl?.platformPostUrl || p.platformPostUrl || null;
+      const platformPostId = pl?.platformPostId || p.platformPostId || null;
+      const platName = pl?.platform || p.platform || "";
+      const username = pl?.accountId?.username || null;
+
+      if (!postUrl && platformPostId) {
+        postUrl = constructPlatformPostUrl(platName, String(platformPostId), username);
+      }
+
+      return {
+        id: String(p._id || p.id || postId),
+        status: p.status || pl?.status || "unknown",
+        scheduledFor: p.scheduledFor || pl?.scheduledFor || null,
+        publishedAt: p.publishedAt || pl?.publishedAt || null,
+        platformPostUrl: postUrl,
+        platformPostId: platformPostId ? String(platformPostId) : null,
+        rawResponse: p,
+      };
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}

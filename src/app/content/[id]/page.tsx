@@ -29,9 +29,11 @@ import {
   Image as ImageIcon,
   Download,
   Link2,
+  Building2,
 } from "lucide-react";
 import { CollapsibleCard } from "@/components/ui/CollapsibleCard";
 import { parseThreadItems } from "@/services/extractor";
+import { ChannelBrandIcon } from "@/components/queues/QueuesCalendarView";
 
 type ChannelType =
   | "linkedin"
@@ -86,6 +88,8 @@ interface ContentDetailResponse {
     scheduledFor: string | null;
     publishedAt: string | null;
     zernioPostId: string | null;
+    platformPostUrl?: string | null;
+    platformPostId?: string | null;
     errorMessage: string | null;
   }>;
   assets: {
@@ -151,6 +155,7 @@ export default function ContentDetailPage({
       body: string;
       postType: string;
       zernioProfileId: string;
+      platformPostUrl?: string;
     };
   }>({});
 
@@ -245,6 +250,7 @@ export default function ContentDetailPage({
           body: p.body || "",
           postType,
           zernioProfileId: (p as any).zernioConnectionId || p.zernioProfileId || "",
+          platformPostUrl: (p as any).platformPostUrl || "",
         };
       });
 
@@ -309,6 +315,7 @@ export default function ContentDetailPage({
     body: "",
     postType: "feed",
     zernioProfileId: "",
+    platformPostUrl: currentPost?.platformPostUrl || "",
   };
 
   const handleFormChange = (field: string, value: string) => {
@@ -319,6 +326,7 @@ export default function ContentDetailPage({
           body: "",
           postType: "feed",
           zernioProfileId: "",
+          platformPostUrl: currentPost?.platformPostUrl || "",
         }),
         [field]: value,
       };
@@ -1146,7 +1154,21 @@ export default function ContentDetailPage({
                     {ch.shortName}
                   </span>
                   {isPub ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <div className="flex items-center gap-1 shrink-0">
+                      {post?.platformPostUrl && (
+                        <a
+                          href={post.platformPostUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 p-0.5 rounded hover:bg-emerald-500/10 transition-colors"
+                          title={`Open live post on ${ch.name}`}
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    </div>
                   ) : isSched ? (
                     <Clock className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
                   ) : isFail ? (
@@ -1592,61 +1614,130 @@ export default function ContentDetailPage({
               </span>
             }
             headerActions={
-              activeChannel === "skool" ? (
-                <a
-                  href="https://www.skool.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 hover:underline font-medium min-h-[36px]"
-                >
-                  <span>Open Skool</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              ) : null
+              <div className="flex items-center gap-2">
+                {currentPost?.platformPostUrl ? (
+                  <a
+                    href={currentPost.platformPostUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-500 shadow-xs transition-all cursor-pointer"
+                    title={`Open live post on ${
+                      activeChannel === "linkedin_page"
+                        ? "LinkedIn Business Page"
+                        : activeChannel === "linkedin"
+                        ? "LinkedIn Personal"
+                        : activeChannel
+                    }`}
+                  >
+                    <ChannelBrandIcon platform={activeChannel} className="w-3.5 h-3.5" />
+                    <span>View Live Post</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                ) : activeChannel === "skool" ? (
+                  <a
+                    href="https://www.skool.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 hover:underline font-medium min-h-[36px]"
+                  >
+                    <span>Open Skool</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                ) : null}
+              </div>
             }
             contentClassName="p-4 sm:p-6 space-y-5"
           >
 
             {/* Prominent Channel Status & Action Banner */}
             {currentPost?.status === "published" ? (
-              <div className="flex items-center justify-between p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-900 dark:text-emerald-200 text-xs shadow-xs">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-semibold text-emerald-900 dark:text-emerald-200 flex items-center gap-2">
-                      <span>
-                        Published to{" "}
-                        {activeChannel === "linkedin_page"
-                          ? "LinkedIn Business Page"
-                          : activeChannel === "threads"
-                          ? "Threads"
-                          : activeChannel === "linkedin"
-                          ? "LinkedIn Personal"
-                          : activeChannel.charAt(0).toUpperCase() + activeChannel.slice(1)}
-                      </span>
-                      <span className="text-[10px] bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 px-1.5 py-0.5 rounded font-mono font-semibold">
-                        DONE
-                      </span>
+              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-900 dark:text-emerald-200 text-xs shadow-xs space-y-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                     </div>
-                    <div className="text-[11px] text-emerald-700 dark:text-emerald-400/90 truncate">
-                      {currentPost.publishedAt
-                        ? `Published on ${new Date(currentPost.publishedAt).toLocaleString()}`
-                        : "Marked as published"}
-                      {currentPost.zernioPostId ? ` • Zernio ID: ${currentPost.zernioPostId}` : ""}
+                    <div className="min-w-0">
+                      <div className="font-semibold text-emerald-900 dark:text-emerald-200 flex items-center gap-2">
+                        <span>
+                          Published to{" "}
+                          {activeChannel === "linkedin_page"
+                            ? "LinkedIn Business Page"
+                            : activeChannel === "threads"
+                            ? "Threads"
+                            : activeChannel === "linkedin"
+                            ? "LinkedIn Personal"
+                            : activeChannel.charAt(0).toUpperCase() + activeChannel.slice(1)}
+                        </span>
+                        <span className="text-[10px] bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 px-1.5 py-0.5 rounded font-mono font-semibold">
+                          DONE
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-emerald-700 dark:text-emerald-400/90 truncate">
+                        {currentPost.publishedAt
+                          ? `Published on ${new Date(currentPost.publishedAt).toLocaleString()}`
+                          : "Marked as published"}
+                        {currentPost.zernioPostId ? ` • Zernio ID: ${currentPost.zernioPostId}` : ""}
+                      </div>
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => updateStatusMutation.mutate({ postId: currentPost.id, status: "draft" })}
+                    disabled={updateStatusMutation.isPending}
+                    className="px-2.5 py-1.5 min-h-[36px] rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-200 text-[11px] font-medium border border-emerald-500/40 transition-colors shrink-0 ml-auto"
+                    title="Reset status back to Pending"
+                  >
+                    {updateStatusMutation.isPending ? "Updating..." : "Mark as Pending"}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => updateStatusMutation.mutate({ postId: currentPost.id, status: "draft" })}
-                  disabled={updateStatusMutation.isPending}
-                  className="px-2.5 py-1.5 min-h-[36px] rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-200 text-[11px] font-medium border border-emerald-500/40 transition-colors shrink-0 ml-2"
-                  title="Reset status back to Pending"
-                >
-                  {updateStatusMutation.isPending ? "Updating..." : "Mark as Pending"}
-                </button>
+
+                {/* Direct Post URL Interactive Actions & Link */}
+                {currentPost.platformPostUrl && (
+                  <div className="pt-2.5 border-t border-emerald-500/20 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <a
+                        href={currentPost.platformPostUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-semibold text-xs hover:bg-emerald-700 shadow-xs transition-colors cursor-pointer"
+                      >
+                        <ChannelBrandIcon platform={activeChannel} className="w-3.5 h-3.5" />
+                        <span>View Live Post</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(currentPost.platformPostUrl!, "bannerPostUrl")}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-900 dark:text-emerald-200 font-medium text-xs transition-colors cursor-pointer"
+                        title="Copy direct post link"
+                      >
+                        {copiedField === "bannerPostUrl" ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copy Link</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <a
+                      href={currentPost.platformPostUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-mono text-emerald-700 dark:text-emerald-300 hover:underline truncate max-w-full sm:max-w-md"
+                      title={currentPost.platformPostUrl}
+                    >
+                      {currentPost.platformPostUrl}
+                    </a>
+                  </div>
+                )}
               </div>
             ) : currentPost?.status === "scheduled" ? (
               <div className="flex items-center justify-between p-3.5 rounded-xl bg-sky-500/10 border border-sky-500/30 text-sky-900 dark:text-sky-200 text-xs shadow-xs">
@@ -2181,6 +2272,69 @@ export default function ContentDetailPage({
                 )}
               </div>
             )}
+
+            {/* Direct Post URL Field */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                  <Link2 className="w-3.5 h-3.5 text-zinc-500" />
+                  <span>Direct Post URL</span>
+                  {currentPost?.platformPostUrl && (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold font-mono">
+                      Live
+                    </span>
+                  )}
+                </label>
+                {currentForm.platformPostUrl && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(currentForm.platformPostUrl!, "directUrl")}
+                      className="text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer"
+                    >
+                      {copiedField === "directUrl" ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                          <span className="text-emerald-600 dark:text-emerald-400 font-medium">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                    <a
+                      href={currentForm.platformPostUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 font-medium cursor-pointer"
+                    >
+                      <span>Open</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                )}
+              </div>
+              <div className="relative">
+                <input
+                  type="url"
+                  value={currentForm.platformPostUrl || ""}
+                  onChange={(e) => handleFormChange("platformPostUrl", e.target.value)}
+                  placeholder={
+                    activeChannel === "skool"
+                      ? "https://www.skool.com/@community/post/..."
+                      : "https://... (Direct live post URL)"
+                  }
+                  className="w-full px-3 py-2 rounded-xl text-xs bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 font-mono"
+                />
+              </div>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
+                {activeChannel === "skool"
+                  ? "Paste your Skool community post link here after manual publishing to easily access it anytime."
+                  : "Live URL of this channel's post. Automatically populated from Zernio upon publish, or can be entered manually."}
+              </p>
+            </div>
 
             {/* Actions Bar */}
             <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">

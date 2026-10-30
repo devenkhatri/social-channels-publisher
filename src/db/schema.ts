@@ -88,6 +88,8 @@ export const channelPosts = sqliteTable("channel_posts", {
   scheduledFor: text("scheduled_for"),
   publishedAt: text("published_at"),
   zernioPostId: text("zernio_post_id"),
+  platformPostUrl: text("platform_post_url"),
+  platformPostId: text("platform_post_id"),
   errorMessage: text("error_message"),
   createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").default(sql`CURRENT_TIMESTAMP`),

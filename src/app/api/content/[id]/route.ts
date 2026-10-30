@@ -3,6 +3,8 @@ import { db, schema } from "@/db";
 import { eq, desc } from "drizzle-orm";
 import { listFolderChildren, renameFolder, getFileContentAsText } from "@/services/onedrive";
 import { sortSlidesNaturally, extractYouTubeContent, extractTwitterContent } from "@/services/extractor";
+import { getZernioPost } from "@/services/zernio";
+import { checkAndRenameFolderIfDone } from "@/services/publisher";
 
 export async function GET(
   request: NextRequest,
@@ -76,6 +78,65 @@ export async function GET(
         .select()
         .from(schema.channelPosts)
         .where(eq(schema.channelPosts.contentItemId, item.id));
+    }
+
+    // Refresh live status and direct post URLs from Zernio for posts that have a zernioPostId
+    const zernioPostsToCheck = posts.filter(
+      (p) => p.zernioPostId && (!p.platformPostUrl || p.status === "scheduled")
+    );
+
+    if (zernioPostsToCheck.length > 0) {
+      await Promise.allSettled(
+        zernioPostsToCheck.map(async (post) => {
+          try {
+            const zPost = await getZernioPost(post.zernioPostId!, post.zernioAccountId);
+            if (!zPost) return;
+
+            const isNowPublished = zPost.status === "published";
+            const newUrl = zPost.platformPostUrl || post.platformPostUrl;
+            const newPostId = zPost.platformPostId || post.platformPostId;
+            const newStatus = isNowPublished
+              ? "published"
+              : zPost.status === "scheduled"
+              ? "scheduled"
+              : post.status;
+            const newPublishedAt = isNowPublished
+              ? zPost.publishedAt || post.publishedAt || new Date().toISOString()
+              : post.publishedAt;
+
+            if (
+              newUrl !== post.platformPostUrl ||
+              newPostId !== post.platformPostId ||
+              newStatus !== post.status ||
+              newPublishedAt !== post.publishedAt
+            ) {
+              post.platformPostUrl = newUrl;
+              post.platformPostId = newPostId;
+              post.status = newStatus;
+              post.publishedAt = newPublishedAt;
+
+              await db
+                .update(schema.channelPosts)
+                .set({
+                  platformPostUrl: newUrl,
+                  platformPostId: newPostId,
+                  status: newStatus,
+                  publishedAt: newPublishedAt,
+                  updatedAt: new Date().toISOString(),
+                })
+                .where(eq(schema.channelPosts.id, post.id));
+
+              if (isNowPublished) {
+                try {
+                  await checkAndRenameFolderIfDone(item.id);
+                } catch {}
+              }
+            }
+          } catch (e) {
+            console.warn(`[Content Detail] Failed to sync post ${post.channel} from Zernio:`, e);
+          }
+        })
+      );
     }
 
     // Try to fetch live OneDrive assets
