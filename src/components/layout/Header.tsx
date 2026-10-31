@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { Share2, RefreshCw, CheckCircle2, AlertCircle, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/components/providers/ThemeProvider";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function Header() {
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const { resolvedTheme, toggleTheme } = useTheme();
+  const queryClient = useQueryClient();
 
   const handleSync = async () => {
     setSyncing(true);
@@ -18,8 +20,10 @@ export function Header() {
       if (!res.ok) {
         throw new Error(data.error || "Sync failed");
       }
-      setSyncMessage("Synced successfully");
-      setTimeout(() => setSyncMessage(null), 3000);
+      queryClient.invalidateQueries({ queryKey: ["content-items"] });
+      queryClient.invalidateQueries({ queryKey: ["sync-status"] });
+      setSyncMessage(data.message || "Synced successfully");
+      setTimeout(() => setSyncMessage(null), 3500);
     } catch (err: any) {
       setSyncMessage(err.message || "OneDrive not connected yet");
       setTimeout(() => setSyncMessage(null), 4000);

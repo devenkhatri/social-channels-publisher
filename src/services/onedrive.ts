@@ -229,6 +229,8 @@ export interface OneDriveFolderItem {
   webUrl: string;
   childCount?: number;
   parentReference?: { path?: string; id?: string };
+  lastModifiedDateTime?: string;
+  cTag?: string;
 }
 
 /**
@@ -246,7 +248,7 @@ export async function listFolders(parentId?: string): Promise<OneDriveFolderItem
   while (nextUrl) {
     let req = client.api(nextUrl);
     if (isFirst) {
-      req = req.select("id,name,webUrl,folder,parentReference").top(200);
+      req = req.select("id,name,webUrl,folder,parentReference,lastModifiedDateTime,cTag").top(200);
       isFirst = false;
     }
     const res = await req.get();
@@ -263,6 +265,8 @@ export async function listFolders(parentId?: string): Promise<OneDriveFolderItem
       webUrl: item.webUrl,
       childCount: item.folder?.childCount,
       parentReference: item.parentReference,
+      lastModifiedDateTime: item.lastModifiedDateTime,
+      cTag: item.cTag,
     }));
 }
 
