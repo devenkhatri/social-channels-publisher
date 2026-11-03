@@ -4,6 +4,32 @@ import * as schema from "./schema";
 import path from "path";
 import fs from "fs";
 
+// Automatically load .env.local if database environment variables are not yet loaded
+// (e.g. when scripts or tools are run via CLI without Next.js or --env-file)
+if (!process.env.TURSO_DATABASE_URL && (!process.env.DATABASE_URL || process.env.DATABASE_URL.startsWith("./") || process.env.DATABASE_URL.startsWith("file:"))) {
+  try {
+    const envPath = path.resolve(process.cwd(), ".env.local");
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, "utf-8");
+      for (const line of content.split("\n")) {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith("#")) {
+          const idx = trimmed.indexOf("=");
+          if (idx !== -1) {
+            const key = trimmed.slice(0, idx).trim();
+            const val = trimmed.slice(idx + 1).trim();
+            if (!process.env[key] || (key === "DATABASE_URL" && !process.env[key]?.startsWith("libsql:"))) {
+              process.env[key] = val;
+            }
+          }
+        }
+      }
+    }
+  } catch {
+    // Non-fatal if .env.local is inaccessible
+  }
+}
+
 // Determine database URL and auth token
 const databaseUrl =
   process.env.TURSO_DATABASE_URL ||

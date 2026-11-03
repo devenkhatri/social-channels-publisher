@@ -255,12 +255,19 @@ export async function GET(
       totalCount: allItems.length,
     };
 
-    return NextResponse.json({
-      item,
-      posts,
-      assets,
-      navigation,
-    });
+    return NextResponse.json(
+      {
+        item,
+        posts,
+        assets,
+        navigation,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      }
+    );
   } catch (error: any) {
     if (error?.digest) {
       throw error;

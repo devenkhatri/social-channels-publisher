@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { itemIds, action } = body as {
       itemIds: string[];
-      action: "mark-done" | "publish-all" | "skip-skool" | "unskip-skool";
+      action: "mark-done" | "publish-all" | "skip-skool" | "unskip-skool" | "done-skool";
     };
 
     if (!Array.isArray(itemIds) || itemIds.length === 0) {
@@ -20,14 +20,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (action === "skip-skool") {
+    if (action === "skip-skool" || action === "done-skool" || action === "unskip-skool") {
       const nowIso = new Date().toISOString();
+      const targetStatus: "skipped" | "published" | "draft" =
+        action === "done-skool" ? "published" : action === "skip-skool" ? "skipped" : "draft";
+
+      // 1. Ensure all itemIds have a Skool post record (upsert if missing)
+      const existingSkool = await db
+        .select()
+        .from(schema.channelPosts)
+        .where(
+          and(
+            inArray(schema.channelPosts.contentItemId, itemIds),
+            eq(schema.channelPosts.channel, "skool")
+          )
+        );
+      const existingItemIds = new Set(existingSkool.map((p) => p.contentItemId));
+      const missingItemIds = itemIds.filter((id) => !existingItemIds.has(id));
+
+      if (missingItemIds.length > 0) {
+        const missingItems = await db
+          .select()
+          .from(schema.contentItems)
+          .where(inArray(schema.contentItems.id, missingItemIds));
+
+        for (const item of missingItems) {
+          await db.insert(schema.channelPosts).values({
+            id: crypto.randomUUID(),
+            contentItemId: item.id,
+            channel: "skool",
+            title: item.title || item.folderName,
+            body: "",
+            status: targetStatus,
+            publishedAt: targetStatus === "published" ? nowIso : null,
+          });
+        }
+      }
+
+      // 2. Update all Skool channel posts for these items
       await db
         .update(schema.channelPosts)
         .set({
-          status: "skipped",
-          publishedAt: null,
+          status: targetStatus,
+          publishedAt: targetStatus === "published" ? nowIso : null,
           scheduledFor: null,
+          errorMessage: null,
           updatedAt: nowIso,
         })
         .where(
@@ -37,32 +74,15 @@ export async function POST(request: NextRequest) {
           )
         );
 
-      return NextResponse.json({
-        success: true,
-        message: `Marked Skool as skipped for ${itemIds.length} items`,
-      });
-    }
-
-    if (action === "unskip-skool") {
-      const nowIso = new Date().toISOString();
-      await db
-        .update(schema.channelPosts)
-        .set({
-          status: "draft",
-          publishedAt: null,
-          scheduledFor: null,
-          updatedAt: nowIso,
-        })
-        .where(
-          and(
-            inArray(schema.channelPosts.contentItemId, itemIds),
-            eq(schema.channelPosts.channel, "skool")
-          )
-        );
+      const statusLabels = {
+        published: "Done (published)",
+        skipped: "Skipped",
+        draft: "Unpublished (draft)",
+      };
 
       return NextResponse.json({
         success: true,
-        message: `Reset Skool to unpublished (draft) for ${itemIds.length} items`,
+        message: `Marked Skool as ${statusLabels[targetStatus]} for ${itemIds.length} items`,
       });
     }
 
@@ -174,7 +194,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: "Invalid action. Supported actions: mark-done, publish-all" },
+      { error: "Invalid action. Supported actions: mark-done, publish-all, skip-skool, unskip-skool, done-skool" },
       { status: 400 }
     );
   } catch (error: any) {

@@ -47,14 +47,21 @@ export async function GET(request: NextRequest) {
     const unpublishedCount = allItems.filter((i) => i.isDone === 0).length;
     const publishedCount = allItems.filter((i) => i.isDone === 1).length;
 
-    return NextResponse.json({
-      items: itemsWithPosts,
-      counts: {
-        total: allItems.length,
-        unpublished: unpublishedCount,
-        published: publishedCount,
+    return NextResponse.json(
+      {
+        items: itemsWithPosts,
+        counts: {
+          total: allItems.length,
+          unpublished: unpublishedCount,
+          published: publishedCount,
+        },
       },
-    });
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      }
+    );
   } catch (error) {
     // Re-throw Next.js internal prerender interruption digests
     if ((error as any)?.digest) {

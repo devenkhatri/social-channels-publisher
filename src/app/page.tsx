@@ -204,7 +204,7 @@ export default function DashboardPage() {
 
   // Batch mutation for multi-selected content folders
   const batchMutation = useMutation({
-    mutationFn: async (action: "mark-done" | "publish-all" | "skip-skool" | "unskip-skool") => {
+    mutationFn: async (action: "mark-done" | "publish-all" | "skip-skool" | "unskip-skool" | "done-skool") => {
       const res = await fetch("/api/content/batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1432,6 +1432,24 @@ export default function DashboardPage() {
           </button>
 
           {/* Skool Batch Actions */}
+          <button
+            onClick={() => {
+              if (
+                confirm(
+                  `Mark Skool as Done (published) for ${selectedIds.length} selected items?`
+                )
+              ) {
+                batchMutation.mutate("done-skool");
+              }
+            }}
+            disabled={batchMutation.isPending}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-xs font-semibold border border-emerald-500/30 shadow-sm transition-all disabled:opacity-50 min-h-[44px] cursor-pointer"
+            title="Mark Skool as Done for selected items"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Mark Skool Done</span>
+          </button>
+
           <button
             onClick={() => {
               if (
