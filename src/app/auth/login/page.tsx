@@ -63,7 +63,7 @@ export default function LoginPage() {
 
         {/* Auth Card */}
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 shadow-xl dark:shadow-2xl dark:shadow-black/50">
-          <div className="flex items-center gap-2 mb-6 text-xs uppercase tracking-wider font-semibold text-zinc-500 dark:text-zinc-400">
+          <div className="flex items-center gap-2 mb-6 text-xs font-medium text-zinc-500 dark:text-zinc-400">
             <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span>Administrator Access</span>
           </div>
@@ -89,7 +89,7 @@ export default function LoginPage() {
                   placeholder="Enter administrator password..."
                   autoComplete="current-password"
                   autoFocus
-                  className="w-full pl-10 pr-11 py-3 text-sm bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 focus:border-zinc-900 dark:focus:border-zinc-100 transition-all min-h-[46px]"
+                  className="w-full pl-10 pr-11 py-3 text-sm bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 focus:border-zinc-900 dark:focus:border-zinc-100 transition-colors duration-150 min-h-[46px]"
                 />
                 <button
                   type="button"
@@ -115,7 +115,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full min-h-[46px] flex items-center justify-center gap-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-medium text-sm rounded-xl py-3 px-4 shadow-sm hover:shadow transition-all duration-150 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="w-full min-h-[46px] flex items-center justify-center gap-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-medium text-sm rounded-xl py-3 px-4 shadow-sm hover:shadow transition-colors duration-150 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-zinc-400 dark:border-zinc-600 border-t-zinc-900 dark:border-t-white rounded-full animate-spin" />

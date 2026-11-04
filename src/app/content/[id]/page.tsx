@@ -995,7 +995,7 @@ export default function ContentDetailPage({
           </div>
           <div className="w-full bg-zinc-800 dark:bg-zinc-200 h-1.5 rounded-full overflow-hidden">
             <div
-              className="bg-sky-500 h-full transition-all duration-300"
+              className="bg-sky-500 h-full transition-[width] duration-300 ease-out"
               style={{
                 width: `${Math.round((publishProgress.step / Math.max(1, publishProgress.total)) * 100)}%`,
               }}
@@ -1122,7 +1122,7 @@ export default function ContentDetailPage({
                     }
                   }}
                   disabled={publishProgress.isActive || pendingCount === 0}
-                  className={`flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-semibold shadow-xs transition-all disabled:opacity-50 whitespace-nowrap shrink-0 ${
+                  className={`flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-semibold shadow-xs transition-colors duration-150 disabled:opacity-50 whitespace-nowrap shrink-0 ${
                     pendingCount === 0
                       ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 cursor-default"
                       : "bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900"
@@ -1157,7 +1157,7 @@ export default function ContentDetailPage({
                     }
                   }}
                   disabled={markDoneMutation.isPending || publishProgress.isActive}
-                  className="flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs transition-all disabled:opacity-50 whitespace-nowrap shrink-0"
+                  className="flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs transition-colors duration-150 disabled:opacity-50 whitespace-nowrap shrink-0"
                 >
                   {markDoneMutation.isPending ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -1181,7 +1181,7 @@ export default function ContentDetailPage({
                   }
                 }}
                 disabled={unmarkDoneMutation.isPending}
-                className="flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-medium border border-zinc-200 dark:border-zinc-800 transition-all disabled:opacity-50 shadow-xs whitespace-nowrap shrink-0"
+                className="flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-medium border border-zinc-200 dark:border-zinc-800 transition-colors duration-150 disabled:opacity-50 shadow-xs whitespace-nowrap shrink-0"
               >
                 {unmarkDoneMutation.isPending ? (
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -1234,7 +1234,7 @@ export default function ContentDetailPage({
         {/* Visual Progress Bar */}
         <div className="w-full bg-zinc-100 dark:bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800/80">
           <div
-            className={`h-full transition-all duration-500 ${
+            className={`h-full transition-[width] duration-500 ease-out ${
               publishedCount === totalChannels
                 ? "bg-emerald-500"
                 : publishedCount > 0
@@ -1260,7 +1260,7 @@ export default function ContentDetailPage({
                 key={ch.id}
                 type="button"
                 onClick={() => setActiveChannel(ch.id)}
-                className={`p-2.5 rounded-xl text-left border transition-all flex flex-col justify-between min-h-[52px] ${
+                className={`p-2.5 rounded-xl text-left border transition-colors duration-150 flex flex-col justify-between min-h-[52px] ${
                   isActive
                     ? "bg-zinc-100 dark:bg-zinc-800 border-zinc-900 dark:border-zinc-100 ring-2 ring-zinc-900/15 dark:ring-white/20 shadow-xs"
                     : isPub
@@ -1349,7 +1349,7 @@ export default function ContentDetailPage({
                   id="media-tab-slides"
                   type="button"
                   onClick={() => setActiveMediaTab("slides")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all min-h-[36px] ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-colors duration-150 min-h-[36px] ${
                     activeMediaTab === "slides"
                       ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
                       : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -1365,7 +1365,7 @@ export default function ContentDetailPage({
                   id="media-tab-video"
                   type="button"
                   onClick={() => setActiveMediaTab("video")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all min-h-[36px] ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-colors duration-150 min-h-[36px] ${
                     activeMediaTab === "video"
                       ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
                       : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -1381,7 +1381,7 @@ export default function ContentDetailPage({
                   id="media-tab-pdf"
                   type="button"
                   onClick={() => setActiveMediaTab("pdf")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all min-h-[36px] ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-colors duration-150 min-h-[36px] ${
                     activeMediaTab === "pdf"
                       ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
                       : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -1396,7 +1396,7 @@ export default function ContentDetailPage({
                   id="media-tab-cover"
                   type="button"
                   onClick={() => setActiveMediaTab("cover")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all min-h-[36px] ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-colors duration-150 min-h-[36px] ${
                     activeMediaTab === "cover"
                       ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
                       : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -1435,7 +1435,7 @@ export default function ContentDetailPage({
                         prev > 0 ? prev - 1 : slides.length - 1
                       )
                     }
-                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-zinc-900/80 hover:bg-zinc-900 text-white backdrop-blur transition-all shadow-lg min-h-[36px] min-w-[36px] flex items-center justify-center"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-zinc-900/80 hover:bg-zinc-900 text-white backdrop-blur transition-colors duration-150 shadow-lg min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer"
                     title="Previous Slide"
                   >
                     <ChevronLeft className="w-4 h-4" />
@@ -1449,7 +1449,7 @@ export default function ContentDetailPage({
                         prev < slides.length - 1 ? prev + 1 : 0
                       )
                     }
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-zinc-900/80 hover:bg-zinc-900 text-white backdrop-blur transition-all shadow-lg min-h-[36px] min-w-[36px] flex items-center justify-center"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-zinc-900/80 hover:bg-zinc-900 text-white backdrop-blur transition-colors duration-150 shadow-lg min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer"
                     title="Next Slide"
                   >
                     <ChevronRight className="w-4 h-4" />
@@ -1468,7 +1468,7 @@ export default function ContentDetailPage({
                       id={`slide-thumb-${idx}`}
                       type="button"
                       onClick={() => setCurrentSlideIndex(idx)}
-                      className={`shrink-0 w-12 h-14 rounded-lg overflow-hidden border transition-all ${
+                      className={`shrink-0 w-12 h-14 rounded-lg overflow-hidden border transition-transform duration-150 cursor-pointer ${
                         currentSlideIndex === idx
                           ? "border-zinc-900 dark:border-zinc-100 ring-2 ring-zinc-900/20 dark:ring-zinc-100/20 scale-105"
                           : "border-zinc-200 dark:border-zinc-800 opacity-60 hover:opacity-100"
@@ -1521,7 +1521,7 @@ export default function ContentDetailPage({
                         id={`video-select-${v.id}`}
                         type="button"
                         onClick={() => setSelectedVideoId(v.id)}
-                        className={`px-2.5 py-1 min-h-[32px] rounded-lg text-xs font-medium border transition-all flex items-center gap-1.5 shrink-0 ${
+                        className={`px-2.5 py-1 min-h-[32px] rounded-lg text-xs font-medium border transition-colors duration-150 flex items-center gap-1.5 shrink-0 cursor-pointer ${
                           activeVideo.id === v.id
                             ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs"
                             : "bg-zinc-100 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -1767,7 +1767,7 @@ export default function ContentDetailPage({
                     href={currentPost.platformPostUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-500 shadow-xs transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-500 shadow-xs transition-colors duration-150 cursor-pointer"
                     title={`Open live post on ${
                       activeChannel === "linkedin_page"
                         ? "LinkedIn Business Page"
@@ -2202,7 +2202,7 @@ export default function ContentDetailPage({
                             key={idx}
                             type="button"
                             onClick={() => handleFormChange("title", opt)}
-                            className={`text-left text-[11px] px-2.5 py-1.5 rounded-lg border transition-all flex items-start gap-2 ${
+                            className={`text-left text-[11px] px-2.5 py-1.5 rounded-lg border transition-colors duration-150 flex items-start gap-2 ${
                               currentForm.title === opt
                                 ? "bg-amber-500/10 text-amber-800 dark:text-amber-200 border-amber-500/40 font-medium"
                                 : "bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -2234,7 +2234,7 @@ export default function ContentDetailPage({
                       <button
                         type="button"
                         onClick={() => handleFormChange("postType", "document")}
-                        className={`py-2 px-3 min-h-[40px] rounded-xl text-xs font-medium border text-center transition-all ${
+                        className={`py-2 px-3 min-h-[40px] rounded-xl text-xs font-medium border text-center transition-colors duration-150 cursor-pointer ${
                           currentForm.postType === "document"
                             ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs font-semibold"
                             : "bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
@@ -2245,7 +2245,7 @@ export default function ContentDetailPage({
                       <button
                         type="button"
                         onClick={() => handleFormChange("postType", "video")}
-                        className={`py-2 px-3 min-h-[40px] rounded-xl text-xs font-medium border text-center transition-all ${
+                        className={`py-2 px-3 min-h-[40px] rounded-xl text-xs font-medium border text-center transition-colors duration-150 cursor-pointer ${
                           currentForm.postType === "video"
                             ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs font-semibold"
                             : "bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
@@ -2256,7 +2256,7 @@ export default function ContentDetailPage({
                       <button
                         type="button"
                         onClick={() => handleFormChange("postType", "feed")}
-                        className={`py-2 px-3 min-h-[40px] rounded-xl text-xs font-medium border text-center transition-all ${
+                        className={`py-2 px-3 min-h-[40px] rounded-xl text-xs font-medium border text-center transition-colors duration-150 cursor-pointer ${
                           currentForm.postType === "feed"
                             ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs font-semibold"
                             : "bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
@@ -2273,7 +2273,7 @@ export default function ContentDetailPage({
                           handleFormChange("postType", "video");
                           setActiveMediaTab("video");
                         }}
-                        className={`py-2 px-3 min-h-[40px] rounded-xl text-xs font-medium border text-center transition-all ${
+                        className={`py-2 px-3 min-h-[40px] rounded-xl text-xs font-medium border text-center transition-colors duration-150 cursor-pointer ${
                           currentForm.postType === "video"
                             ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs font-semibold"
                             : "bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
@@ -2284,7 +2284,7 @@ export default function ContentDetailPage({
                       <button
                         type="button"
                         onClick={() => handleFormChange("postType", "feed")}
-                        className={`py-2 px-3 min-h-[40px] rounded-xl text-xs font-medium border text-center transition-all ${
+                        className={`py-2 px-3 min-h-[40px] rounded-xl text-xs font-medium border text-center transition-colors duration-150 cursor-pointer ${
                           currentForm.postType === "feed"
                             ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs font-semibold"
                             : "bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
@@ -2298,7 +2298,7 @@ export default function ContentDetailPage({
                       <button
                         type="button"
                         onClick={() => handleFormChange("postType", "reel")}
-                        className={`py-2 px-3 min-h-[40px] rounded-xl text-xs font-medium border text-center transition-all ${
+                        className={`py-2 px-3 min-h-[40px] rounded-xl text-xs font-medium border text-center transition-colors duration-150 cursor-pointer ${
                           currentForm.postType === "reel"
                             ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs font-semibold"
                             : "bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
@@ -2311,7 +2311,7 @@ export default function ContentDetailPage({
                         onClick={() =>
                           handleFormChange("postType", "carousel")
                         }
-                        className={`py-2 px-3 min-h-[40px] rounded-xl text-xs font-medium border text-center transition-all ${
+                        className={`py-2 px-3 min-h-[40px] rounded-xl text-xs font-medium border text-center transition-colors duration-150 cursor-pointer ${
                           currentForm.postType === "carousel"
                             ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs font-semibold"
                             : "bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
@@ -2322,7 +2322,7 @@ export default function ContentDetailPage({
                       <button
                         type="button"
                         onClick={() => handleFormChange("postType", "feed")}
-                        className={`py-2 px-3 min-h-[40px] rounded-xl text-xs font-medium border text-center transition-all ${
+                        className={`py-2 px-3 min-h-[40px] rounded-xl text-xs font-medium border text-center transition-colors duration-150 cursor-pointer ${
                           currentForm.postType === "feed"
                             ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs font-semibold"
                             : "bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
@@ -2630,7 +2630,7 @@ export default function ContentDetailPage({
                           "all"
                         );
                       }}
-                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 h-9 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-medium border border-zinc-200 dark:border-zinc-700 transition-all cursor-pointer whitespace-nowrap"
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 h-9 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-medium border border-zinc-200 dark:border-zinc-700 transition-colors duration-150 cursor-pointer whitespace-nowrap"
                       title="Copy post title and body to clipboard"
                     >
                       {copiedField === "all" ? (
@@ -2653,7 +2653,7 @@ export default function ContentDetailPage({
                         type="button"
                         disabled={updateStatusMutation.isPending}
                         onClick={() => updateStatusMutation.mutate({ postId: currentPost.id, status: "draft" })}
-                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 h-9 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-200 text-xs font-medium border border-amber-500/30 transition-all cursor-pointer whitespace-nowrap"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 h-9 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-200 text-xs font-medium border border-amber-500/30 transition-colors duration-150 cursor-pointer whitespace-nowrap"
                         title="Unskip this post (set back to unpublished draft)"
                       >
                         <RotateCcw className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
@@ -2664,7 +2664,7 @@ export default function ContentDetailPage({
                         type="button"
                         disabled={updateStatusMutation.isPending}
                         onClick={() => updateStatusMutation.mutate({ postId: currentPost.id, status: "skipped" })}
-                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 h-9 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-medium border border-zinc-200 dark:border-zinc-700 transition-all cursor-pointer whitespace-nowrap"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 h-9 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-medium border border-zinc-200 dark:border-zinc-700 transition-colors duration-150 cursor-pointer whitespace-nowrap"
                         title="Skip publishing this post to Skool"
                       >
                         <MinusCircle className="w-3.5 h-3.5 text-zinc-500" />
@@ -2680,7 +2680,7 @@ export default function ContentDetailPage({
                         type="button"
                         disabled={updateStatusMutation.isPending}
                         onClick={() => updateStatusMutation.mutate({ postId: currentPost.id, status: "draft" })}
-                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 h-9 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-medium border border-zinc-200 dark:border-zinc-700 transition-all cursor-pointer whitespace-nowrap"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 h-9 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-medium border border-zinc-200 dark:border-zinc-700 transition-colors duration-150 cursor-pointer whitespace-nowrap"
                         title="Mark Skool as Pending (draft)"
                       >
                         <RotateCcw className="w-3.5 h-3.5 text-zinc-500" />
@@ -2691,7 +2691,7 @@ export default function ContentDetailPage({
                         type="button"
                         disabled={updateStatusMutation.isPending}
                         onClick={() => updateStatusMutation.mutate({ postId: currentPost.id, status: "published" })}
-                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 h-9 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 text-xs font-medium border border-emerald-500/30 transition-all cursor-pointer whitespace-nowrap"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 h-9 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 text-xs font-medium border border-emerald-500/30 transition-colors duration-150 cursor-pointer whitespace-nowrap"
                         title="Mark Skool as Done (published)"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -2707,7 +2707,7 @@ export default function ContentDetailPage({
                     type="button"
                     disabled={publishMutation.isPending}
                     onClick={() => publishMutation.mutate()}
-                    className={`inline-flex items-center justify-center gap-2 px-5 py-2 h-9 rounded-xl text-xs font-semibold shadow-xs transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer ${
+                    className={`inline-flex items-center justify-center gap-2 px-5 py-2 h-9 rounded-xl text-xs font-semibold shadow-xs transition-colors duration-150 disabled:opacity-50 whitespace-nowrap cursor-pointer ${
                       currentPost?.status === "published"
                         ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700"
                         : "bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900"
@@ -2742,14 +2742,14 @@ export default function ContentDetailPage({
                   <div className="flex items-center gap-2 min-w-0">
                     {hasYouTubeUrl ? (
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                         <span className="text-xs font-medium text-zinc-800 dark:text-zinc-200 truncate">
                           YouTube video attached. 1-click publish ready.
                         </span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                         <span className="text-xs text-amber-700 dark:text-amber-300">
                           YouTube URL required to publish to Skool community.
                         </span>
@@ -2779,7 +2779,7 @@ export default function ContentDetailPage({
                         type="button"
                         disabled={publishSkoolMutation.isPending}
                         onClick={() => publishSkoolMutation.mutate()}
-                        className={`inline-flex items-center justify-center gap-2 px-4 py-2 h-9 rounded-xl text-xs font-semibold shadow-xs transition-all disabled:opacity-50 cursor-pointer whitespace-nowrap ${
+                        className={`inline-flex items-center justify-center gap-2 px-4 py-2 h-9 rounded-xl text-xs font-semibold shadow-xs transition-colors duration-150 disabled:opacity-50 cursor-pointer whitespace-nowrap ${
                           currentPost?.status === "published"
                             ? "bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-200 border border-amber-500/40"
                             : "bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold shadow-amber-500/20 hover:shadow-md"

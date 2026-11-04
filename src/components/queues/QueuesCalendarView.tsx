@@ -581,14 +581,14 @@ export function QueuesCalendarView({
               <button
                 onClick={handlePrevMonth}
                 title="Previous Month"
-                className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-zinc-900 text-zinc-600 dark:text-zinc-300 transition-all min-h-[32px] min-w-[32px] flex items-center justify-center cursor-pointer"
+                className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-zinc-900 text-zinc-600 dark:text-zinc-300 transition-colors duration-150 min-h-[32px] min-w-[32px] flex items-center justify-center cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={handleNextMonth}
                 title="Next Month"
-                className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-zinc-900 text-zinc-600 dark:text-zinc-300 transition-all min-h-[32px] min-w-[32px] flex items-center justify-center cursor-pointer"
+                className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-zinc-900 text-zinc-600 dark:text-zinc-300 transition-colors duration-150 min-h-[32px] min-w-[32px] flex items-center justify-center cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -598,7 +598,7 @@ export function QueuesCalendarView({
 
         {/* Channel Indicator Legend Bar */}
         <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center gap-2 flex-wrap">
-          <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mr-1">
+          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mr-1">
             Channel Indicators:
           </span>
           {["linkedin", "twitter", "youtube", "instagram", "facebook", "threads", "skool"].map((chan) => {
@@ -647,7 +647,7 @@ export function QueuesCalendarView({
                 onClick={() => handleSelectDate(cell.dateKey)}
                 role="button"
                 tabIndex={0}
-                className={`min-h-[85px] sm:min-h-[125px] p-1.5 sm:p-2 transition-all flex flex-col justify-between cursor-pointer relative select-none group ${
+                className={`min-h-[85px] sm:min-h-[125px] p-1.5 sm:p-2 transition-colors duration-150 flex flex-col justify-between cursor-pointer relative select-none group ${
                   !cell.isCurrentMonth
                     ? "bg-zinc-50/40 dark:bg-zinc-950/20 text-zinc-300 dark:text-zinc-600"
                     : "bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
@@ -721,7 +721,7 @@ export function QueuesCalendarView({
                           setSelectedDateKey(cell.dateKey);
                           setInspectingPost(post);
                         }}
-                        className={`px-1.5 py-1 rounded-md text-[10px] border-l-[3px] border border-zinc-200 dark:border-zinc-800 ${channelMeta.borderLeft} ${channelMeta.cardBg} hover:brightness-95 dark:hover:brightness-110 leading-tight truncate transition-all shadow-2xs font-medium cursor-pointer`}
+                        className={`px-2 py-1 rounded-md text-[11px] border border-zinc-200/90 dark:border-zinc-800/90 ${channelMeta.cardBg} hover:brightness-95 dark:hover:brightness-110 leading-tight truncate transition-colors duration-150 shadow-2xs font-medium cursor-pointer`}
                         title={`[${channelMeta.name}] ${postTime ? postTime + " - " : ""}${post.title || post.content}`}
                       >
                         <div className="flex items-center gap-1 min-w-0">
@@ -813,7 +813,7 @@ export function QueuesCalendarView({
               </span>
               <button
                 onClick={() => setChannelFilter("all")}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors duration-150 ${
                   channelFilter === "all"
                     ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs"
                     : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900"
@@ -829,7 +829,7 @@ export function QueuesCalendarView({
                   <button
                     key={chan}
                     onClick={() => setChannelFilter(chan)}
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors duration-150 ${
                       isSelected
                         ? `${meta.badgeBg} ${meta.badgeText} ${meta.borderClass} shadow-2xs`
                         : `${meta.pillBg} hover:opacity-100`
@@ -874,7 +874,7 @@ export function QueuesCalendarView({
               return (
                 <div
                   key={post.id}
-                  className={`rounded-2xl border-l-[5px] border ${primaryMeta.borderLeft} ${primaryMeta.cardBorder} ${primaryMeta.cardBg} p-4 sm:p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between gap-4`}
+                  className={`rounded-2xl border ${primaryMeta.cardBorder} ${primaryMeta.cardBg} p-4 sm:p-5 shadow-xs hover:shadow-md transition-colors duration-150 flex flex-col justify-between gap-4`}
                 >
                   {/* Card Header: Channel Brand Banner, Scheduled Time & Status */}
                   <div className="space-y-3">
@@ -891,7 +891,7 @@ export function QueuesCalendarView({
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold shadow-2xs hover:brightness-110 hover:shadow-xs transition-all cursor-pointer ${plMeta.badgeBg} ${plMeta.badgeText}`}
+                                className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold shadow-2xs hover:brightness-110 hover:shadow-xs transition-colors duration-150 cursor-pointer ${plMeta.badgeBg} ${plMeta.badgeText}`}
                                 title={`Open live post on ${plMeta.name}`}
                               >
                                 <ChannelBrandIcon platform={pl.platform} className="w-3.5 h-3.5" />
@@ -1029,7 +1029,7 @@ export function QueuesCalendarView({
       {unscheduledPosts.length > 0 && (
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-2">
+            <h4 className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 flex items-center gap-2">
               <Clock className="w-3.5 h-3.5" />
               <span>Unscheduled Queue Items ({unscheduledPosts.length})</span>
             </h4>
@@ -1042,7 +1042,7 @@ export function QueuesCalendarView({
                 <div
                   key={post.id}
                   onClick={() => setInspectingPost(post)}
-                  className={`p-3.5 rounded-xl border-l-4 border ${primaryMeta.borderLeft} ${primaryMeta.cardBorder} ${primaryMeta.cardBg} hover:brightness-95 dark:hover:brightness-110 cursor-pointer transition-all space-y-1.5`}
+                  className={`p-3.5 rounded-xl border ${primaryMeta.cardBorder} ${primaryMeta.cardBg} hover:brightness-95 dark:hover:brightness-110 cursor-pointer transition-colors duration-150 space-y-1.5`}
                 >
                   <div className="flex items-center justify-between gap-1 text-[11px]">
                     <span className="font-bold text-zinc-900 dark:text-zinc-100 truncate">
@@ -1075,14 +1075,14 @@ export function QueuesCalendarView({
             {/* Modal Header */}
             <div className="flex items-start justify-between gap-3 pb-3 border-b border-zinc-200 dark:border-zinc-800">
               <div>
-                <span className="text-[11px] font-mono uppercase tracking-wider font-semibold">
+                <span className="text-xs font-semibold">
                   {inspectingPost.status === "published" ? (
                     <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                       Published Post Details
                     </span>
                   ) : (
-                    <span className="text-zinc-500">Queued Post Details</span>
+                    <span className="text-zinc-700 dark:text-zinc-300">Queued Post Details</span>
                   )}
                 </span>
                 <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mt-0.5">
@@ -1191,7 +1191,7 @@ export function QueuesCalendarView({
                         href={pl.platformPostUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`group text-xs font-bold px-3 py-1.5 rounded-lg shadow-2xs flex items-center gap-1.5 transition-all hover:brightness-110 hover:shadow-md cursor-pointer ${meta.badgeBg} ${meta.badgeText}`}
+                        className={`group text-xs font-bold px-3 py-1.5 rounded-lg shadow-2xs flex items-center gap-1.5 transition-colors duration-150 hover:brightness-110 hover:shadow-md cursor-pointer ${meta.badgeBg} ${meta.badgeText}`}
                         title={`Open live post on ${meta.name}`}
                       >
                         <ChannelBrandIcon platform={pl.platform} className="w-3.5 h-3.5" />

@@ -461,7 +461,7 @@ export default function DashboardPage() {
       <span
         key={channel}
         title={statusTitle}
-        className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-medium flex items-center gap-1 transition-all ${
+        className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-medium flex items-center gap-1 transition-colors duration-150 ${
           isPub
             ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25"
             : isFail
@@ -527,7 +527,7 @@ export default function DashboardPage() {
           <button
             onClick={() => syncMutation.mutate()}
             disabled={syncMutation.isPending || syncZernioMutation.isPending}
-            className="flex items-center gap-2 px-3.5 py-2 min-h-[40px] rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-xs font-medium shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+            className="flex items-center gap-2 px-3.5 py-2 min-h-[40px] rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-xs font-medium shadow-sm transition-colors duration-150 active:scale-95 disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw
               className={`w-3.5 h-3.5 ${syncMutation.isPending ? "animate-spin" : ""}`}
@@ -538,7 +538,7 @@ export default function DashboardPage() {
           <button
             onClick={() => syncZernioMutation.mutate()}
             disabled={syncZernioMutation.isPending || syncMutation.isPending}
-            className="flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl text-xs font-medium bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl text-xs font-medium bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 transition-colors duration-150 shadow-xs disabled:opacity-50 cursor-pointer"
             title="Fast check of queue & live publish statuses directly from Zernio"
           >
             <RefreshCw
@@ -550,7 +550,7 @@ export default function DashboardPage() {
 
           <Link
             href="/settings/onedrive"
-            className="flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl text-xs font-medium bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 transition-colors shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl text-xs font-medium bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 transition-colors duration-150 shadow-xs"
           >
             <Cloud className="w-3.5 h-3.5 text-zinc-500" />
             <span className="hidden sm:inline">Folder Settings</span>
@@ -576,7 +576,7 @@ export default function DashboardPage() {
               setStatusFilter("unpublished");
               setCurrentPage(1);
             }}
-            className={`cursor-pointer p-4 rounded-2xl border transition-all ${
+            className={`cursor-pointer p-4 rounded-2xl border transition-colors duration-150 ${
               statusFilter === "unpublished"
                 ? "bg-amber-500/10 border-amber-500/40 ring-1 ring-amber-500/30"
                 : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs"
@@ -584,7 +584,7 @@ export default function DashboardPage() {
           >
             <div className="flex items-center justify-between text-xs text-amber-600 dark:text-amber-400 font-medium">
               <span>Pending Folders</span>
-              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <Clock className="w-3.5 h-3.5 text-amber-500" />
             </div>
             <p className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100 mt-2">
               {summaryCounts.unpublished}
@@ -600,7 +600,7 @@ export default function DashboardPage() {
               setStatusFilter("in_progress");
               setCurrentPage(1);
             }}
-            className={`cursor-pointer p-4 rounded-2xl border transition-all ${
+            className={`cursor-pointer p-4 rounded-2xl border transition-colors duration-150 ${
               statusFilter === "in_progress"
                 ? "bg-sky-500/10 border-sky-500/40 ring-1 ring-sky-500/30"
                 : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs"
@@ -624,7 +624,7 @@ export default function DashboardPage() {
               setStatusFilter("published");
               setCurrentPage(1);
             }}
-            className={`cursor-pointer p-4 rounded-2xl border transition-all ${
+            className={`cursor-pointer p-4 rounded-2xl border transition-colors duration-150 ${
               statusFilter === "published"
                 ? "bg-emerald-500/10 border-emerald-500/40 ring-1 ring-emerald-500/30"
                 : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs"
@@ -648,7 +648,7 @@ export default function DashboardPage() {
               setStatusFilter("all");
               setCurrentPage(1);
             }}
-            className={`cursor-pointer p-4 rounded-2xl border transition-all ${
+            className={`cursor-pointer p-4 rounded-2xl border transition-colors duration-150 ${
               statusFilter === "all"
                 ? "bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 ring-1 ring-zinc-400/30"
                 : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 shadow-xs"
@@ -686,7 +686,7 @@ export default function DashboardPage() {
                     setStatusFilter("unpublished");
                     setCurrentPage(1);
                   }}
-                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors duration-150 cursor-pointer ${
                     skoolFilter === "all" && statusFilter === "unpublished"
                       ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
                       : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -700,7 +700,7 @@ export default function DashboardPage() {
                     setStatusFilter("in_progress");
                     setCurrentPage(1);
                   }}
-                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors duration-150 cursor-pointer ${
                     skoolFilter === "all" && statusFilter === "in_progress"
                       ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
                       : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -714,7 +714,7 @@ export default function DashboardPage() {
                     setStatusFilter("published");
                     setCurrentPage(1);
                   }}
-                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors duration-150 cursor-pointer ${
                     skoolFilter === "all" && statusFilter === "published"
                       ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
                       : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -728,7 +728,7 @@ export default function DashboardPage() {
                     setStatusFilter("all");
                     setCurrentPage(1);
                   }}
-                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-colors duration-150 cursor-pointer ${
                     skoolFilter === "all" && statusFilter === "all"
                       ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold"
                       : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -751,7 +751,7 @@ export default function DashboardPage() {
                   }
                   setCurrentPage(1);
                 }}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all cursor-pointer shadow-xs ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors duration-150 cursor-pointer shadow-xs ${
                   skoolFilter === "unpublished"
                     ? "bg-amber-500 text-zinc-950 border-amber-500 font-bold ring-2 ring-amber-500/20"
                     : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 dark:text-amber-200 border-amber-500/30"
@@ -776,7 +776,7 @@ export default function DashboardPage() {
               <button
                 onClick={() => setViewMode("table")}
                 title="Table / List View"
-                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                className={`p-1.5 rounded-lg transition-colors duration-150 cursor-pointer ${
                   viewMode === "table"
                     ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
                     : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -787,7 +787,7 @@ export default function DashboardPage() {
               <button
                 onClick={() => setViewMode("grid")}
                 title="Grid View"
-                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                className={`p-1.5 rounded-lg transition-colors duration-150 cursor-pointer ${
                   viewMode === "grid"
                     ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
                     : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -811,7 +811,7 @@ export default function DashboardPage() {
                   setCurrentPage(1);
                 }}
                 placeholder="Search title or folder..."
-                className="w-full pl-9 pr-8 py-2 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all"
+                className="w-full pl-9 pr-8 py-2 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-colors duration-150"
               />
               {search && (
                 <button
@@ -843,7 +843,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Skool Channel Status Filter Dropdown */}
-            <div className={`flex items-center gap-1.5 text-xs bg-white dark:bg-zinc-900 border rounded-xl px-3 py-2 transition-all ${
+            <div className={`flex items-center gap-1.5 text-xs bg-white dark:bg-zinc-900 border rounded-xl px-3 py-2 transition-colors duration-150 ${
               skoolFilter !== "all"
                 ? "border-amber-500/50 ring-1 ring-amber-500/30 text-amber-800 dark:text-amber-200"
                 : "border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400"
@@ -949,7 +949,7 @@ export default function DashboardPage() {
                   selectAll(filteredItems);
                 }
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white font-medium transition-all shadow-xs min-h-[36px] whitespace-nowrap shrink-0"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:white font-medium transition-colors duration-150 shadow-xs min-h-[36px] whitespace-nowrap shrink-0"
             >
               {selectedIds.length === filteredItems.length && filteredItems.length > 0 ? (
                 <>
@@ -1007,7 +1007,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-center gap-3">
               <Link
                 href="/settings/onedrive"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-xs font-medium shadow-sm transition-all"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-xs font-medium shadow-sm transition-colors duration-150"
               >
                 <Cloud className="w-4 h-4" />
                 <span>Configure OneDrive</span>
@@ -1035,7 +1035,7 @@ export default function DashboardPage() {
             return (
               <div
                 key={item.id}
-                className={`group rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between transition-all ${
+                className={`group rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between transition-colors duration-150 ${
                   isSelected
                     ? "bg-zinc-50 dark:bg-zinc-800/50 border-2 border-zinc-900 dark:border-zinc-100 ring-2 ring-zinc-900/10 dark:ring-zinc-100/10"
                     : "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
@@ -1051,7 +1051,7 @@ export default function DashboardPage() {
                           e.stopPropagation();
                           toggleSelect(item.id);
                         }}
-                        className={`p-1 rounded-lg transition-all min-h-[32px] min-w-[32px] flex items-center justify-center ${
+                        className={`p-1 rounded-lg transition-colors duration-150 min-h-[32px] min-w-[32px] flex items-center justify-center ${
                           isSelected
                             ? "text-zinc-900 dark:text-zinc-100 bg-zinc-200 dark:bg-zinc-700"
                             : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
@@ -1173,7 +1173,7 @@ export default function DashboardPage() {
                         onClick={() => markDoneMutation.mutate(item.id)}
                         disabled={markDoneMutation.isPending}
                         title="Mark as published & rename folder on OneDrive"
-                        className="px-2.5 py-1 min-h-[32px] rounded-lg bg-zinc-100 hover:bg-emerald-500/10 text-zinc-700 hover:text-emerald-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:text-emerald-300 text-[11px] font-medium border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500/30 transition-all"
+                        className="px-2.5 py-1 min-h-[32px] rounded-lg bg-zinc-100 hover:bg-emerald-500/10 text-zinc-700 hover:text-emerald-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:text-emerald-300 text-[11px] font-medium border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500/30 transition-colors duration-150"
                       >
                         <span>-Done</span>
                       </button>
@@ -1197,7 +1197,7 @@ export default function DashboardPage() {
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-zinc-50 dark:bg-zinc-950/60 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 font-semibold uppercase text-[10px] tracking-wider">
+              <thead className="bg-zinc-50 dark:bg-zinc-950/60 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 font-medium text-[11px]">
                 <tr>
                   <th className="py-3 px-4 w-10">
                     <button
@@ -1359,7 +1359,7 @@ export default function DashboardPage() {
                   <button
                     key={pageNum}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all ${
+                    className={`w-8 h-8 rounded-lg text-xs font-semibold transition-colors duration-150 ${
                       currentPage === pageNum
                         ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs"
                         : "hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
@@ -1404,7 +1404,7 @@ export default function DashboardPage() {
               }
             }}
             disabled={batchMutation.isPending}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition-all disabled:opacity-50 min-h-[44px] cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition-colors duration-150 disabled:opacity-50 min-h-[44px] cursor-pointer"
           >
             {batchMutation.isPending ? (
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -1425,7 +1425,7 @@ export default function DashboardPage() {
               }
             }}
             disabled={batchMutation.isPending}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white text-zinc-900 hover:bg-zinc-100 text-xs font-semibold shadow-sm transition-all disabled:opacity-50 min-h-[44px] cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white text-zinc-900 hover:bg-zinc-100 text-xs font-semibold shadow-sm transition-colors duration-150 disabled:opacity-50 min-h-[44px] cursor-pointer"
           >
             <Send className="w-3.5 h-3.5" />
             <span>Publish All</span>
@@ -1443,7 +1443,7 @@ export default function DashboardPage() {
               }
             }}
             disabled={batchMutation.isPending}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-xs font-semibold border border-emerald-500/30 shadow-sm transition-all disabled:opacity-50 min-h-[44px] cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-xs font-semibold border border-emerald-500/30 shadow-sm transition-colors duration-150 disabled:opacity-50 min-h-[44px] cursor-pointer"
             title="Mark Skool as Done for selected items"
           >
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -1461,7 +1461,7 @@ export default function DashboardPage() {
               }
             }}
             disabled={batchMutation.isPending}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold border border-zinc-700 shadow-sm transition-all disabled:opacity-50 min-h-[44px] cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold border border-zinc-700 shadow-sm transition-colors duration-150 disabled:opacity-50 min-h-[44px] cursor-pointer"
             title="Mark Skool as skipped for selected items"
           >
             <MinusCircle className="w-3.5 h-3.5 text-zinc-400" />
@@ -1479,7 +1479,7 @@ export default function DashboardPage() {
               }
             }}
             disabled={batchMutation.isPending}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-xs font-semibold border border-amber-500/30 shadow-sm transition-all disabled:opacity-50 min-h-[44px] cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-xs font-semibold border border-amber-500/30 shadow-sm transition-colors duration-150 disabled:opacity-50 min-h-[44px] cursor-pointer"
             title="Reset Skool to unpublished for selected items"
           >
             <RotateCcw className="w-3.5 h-3.5 text-amber-400" />

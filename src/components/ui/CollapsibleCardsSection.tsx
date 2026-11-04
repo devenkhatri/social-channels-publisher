@@ -35,7 +35,7 @@ export function CollapsibleCardsSection({
           type="button"
           onClick={() => setIsOpenMobile((prev) => !prev)}
           aria-expanded={isOpenMobile}
-          className="w-full flex items-center justify-between p-3 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-xs transition-all text-left"
+          className="w-full flex items-center justify-between p-3 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-xs transition-colors duration-150 text-left"
         >
           <div className="flex items-center gap-2.5 min-w-0 pr-2">
             <div className="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0">
@@ -73,7 +73,7 @@ export function CollapsibleCardsSection({
       <div className="hidden sm:flex items-center justify-between mb-2.5">
         <div className="flex items-center gap-2">
           <Icon className="w-4 h-4 text-zinc-500" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+          <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">
             {title}
           </span>
           {badge}

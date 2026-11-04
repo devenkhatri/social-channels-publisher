@@ -214,7 +214,7 @@ export function FolderPickerModal({
                 <div
                   key={folder.id}
                   onClick={() => setSelectedFolder(folder)}
-                  className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+                  className={`flex items-center justify-between p-3 rounded-xl border transition-colors duration-150 cursor-pointer ${
                     isSelected
                       ? "bg-zinc-100 dark:bg-zinc-800/80 border-zinc-400 dark:border-zinc-600 text-zinc-900 dark:text-zinc-100 shadow-xs"
                       : "bg-white dark:bg-zinc-900/60 border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 text-zinc-700 dark:text-zinc-300"
@@ -284,7 +284,7 @@ export function FolderPickerModal({
             <button
               onClick={handleConfirm}
               disabled={saving || (!selectedFolder && breadcrumbs.length <= 1)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[38px] cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 shadow-sm transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed min-h-[38px] cursor-pointer"
             >
               {saving ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />

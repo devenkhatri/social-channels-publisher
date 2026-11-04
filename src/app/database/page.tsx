@@ -302,7 +302,7 @@ export default function DatabasePage() {
           <button
             onClick={() => refetch()}
             disabled={isLoading || isRefetching}
-            className="flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-medium bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white shadow-xs transition-all disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-medium bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white shadow-xs transition-colors duration-150 disabled:opacity-50"
           >
             <RefreshCw
               className={`w-3.5 h-3.5 ${
@@ -397,7 +397,7 @@ export default function DatabasePage() {
                   <button
                     key={t.name}
                     onClick={() => handleTableChange(t.name)}
-                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition-all border ${
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition-colors duration-150 border ${
                       isSelected
                         ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs font-semibold"
                         : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100"
@@ -506,7 +506,7 @@ export default function DatabasePage() {
               <button
                 key={col.cid}
                 onClick={() => handleSort(col.name)}
-                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-mono border transition-all ${
+                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-mono border transition-colors duration-150 ${
                   sortBy === col.name
                     ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs"
                     : "bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300"
@@ -531,7 +531,7 @@ export default function DatabasePage() {
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-zinc-50 dark:bg-zinc-950/80 sticky top-0 z-10 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 font-semibold text-[11px] tracking-wider uppercase">
+            <thead className="bg-zinc-50 dark:bg-zinc-950/80 sticky top-0 z-10 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 font-medium text-[11px]">
               <tr>
                 <th className="py-3 px-3 w-10 text-center font-mono text-[10px] text-zinc-400 border-r border-zinc-200/50 dark:border-zinc-800/50">
                   #

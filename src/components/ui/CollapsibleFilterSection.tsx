@@ -32,7 +32,7 @@ export function CollapsibleFilterSection({
           type="button"
           onClick={() => setIsOpenMobile((prev) => !prev)}
           aria-expanded={isOpenMobile}
-          className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all text-left ${
+          className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-colors duration-150 text-left ${
             activeFiltersCount > 0
               ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-sm"
               : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs"

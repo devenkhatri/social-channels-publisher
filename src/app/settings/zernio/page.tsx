@@ -258,7 +258,7 @@ export default function ZernioSettingsPage() {
             setIsAdding(!isAdding);
             setTestResult(null);
           }}
-          className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 text-xs font-medium shadow-sm transition-all min-h-[38px] cursor-pointer whitespace-nowrap shrink-0"
+          className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 text-xs font-medium shadow-sm transition-colors duration-150 min-h-[38px] cursor-pointer whitespace-nowrap shrink-0"
         >
           <Plus className="w-4 h-4 shrink-0" />
           <span className="whitespace-nowrap">Add Account</span>
@@ -377,7 +377,7 @@ export default function ZernioSettingsPage() {
       {/* Configured Accounts List */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs uppercase font-semibold text-zinc-500 dark:text-zinc-400 tracking-wider">
+          <h3 className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
             Configured Accounts ({accounts.length})
           </h3>
           <span className="text-xs text-zinc-500">
@@ -530,7 +530,7 @@ export default function ZernioSettingsPage() {
                             {profile.connections.map((conn) => (
                               <div
                                 key={conn.id}
-                                className="flex items-start justify-between gap-3 p-3 rounded-xl bg-white dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-800/90 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all shadow-xs"
+                                className="flex items-start justify-between gap-3 p-3 rounded-xl bg-white dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-800/90 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors duration-150 shadow-xs"
                               >
                                 <div className="flex items-start gap-3 min-w-0">
                                   {conn.profilePicture ? (

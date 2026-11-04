@@ -230,7 +230,7 @@ export default function ActivityLogPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-zinc-200 dark:border-zinc-800">
         <div>
-          <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400 mb-1 text-xs font-semibold uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400 mb-1 text-xs font-medium">
             <Activity className="w-4 h-4" />
             <span>Audit Trail & Telemetry</span>
           </div>
@@ -349,7 +349,7 @@ export default function ActivityLogPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all min-h-[40px] flex items-center ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors duration-150 min-h-[40px] flex items-center ${
                   activeTab === tab.id
                     ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs font-semibold"
                     : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800"
@@ -369,7 +369,7 @@ export default function ActivityLogPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search activity description..."
-                className="w-full pl-9 pr-8 py-2 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all"
+                className="w-full pl-9 pr-8 py-2 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-colors duration-150"
               />
               {search && (
                 <button
@@ -463,7 +463,7 @@ export default function ActivityLogPage() {
             return (
               <div
                 key={act.id}
-                className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all shadow-xs"
+                className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors duration-150 shadow-xs"
               >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
@@ -556,7 +556,7 @@ export default function ActivityLogPage() {
                 {/* Expanded metadata drawer */}
                 {isExpanded && act.metadata && (
                   <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800">
-                    <span className="text-[10px] uppercase font-semibold text-zinc-500 dark:text-zinc-400 tracking-wider block mb-1">
+                    <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 block mb-1">
                       Event Metadata / Debug Context:
                     </span>
                     <pre className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 font-mono text-[11px] overflow-x-auto border border-zinc-200 dark:border-zinc-800 max-h-60">

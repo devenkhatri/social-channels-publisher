@@ -440,7 +440,7 @@ export default function QueuesPage() {
           <button
             onClick={() => refetch()}
             disabled={isLoading || isRefetching}
-            className="flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-medium bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white shadow-xs transition-all disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-medium bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white shadow-xs transition-colors duration-150 disabled:opacity-50"
           >
             <RefreshCw
               className={`w-3.5 h-3.5 ${isLoading || isRefetching ? "animate-spin" : ""}`}
@@ -450,7 +450,7 @@ export default function QueuesPage() {
 
           <Link
             href="/settings/zernio"
-            className="flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 transition-all shadow-xs"
+            className="flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 transition-colors duration-150 shadow-xs"
           >
             <KeyRound className="w-3.5 h-3.5 text-zinc-500" />
             <span>Manage Accounts</span>
@@ -555,7 +555,7 @@ export default function QueuesPage() {
             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
               <button
                 onClick={() => setSelectedAccountId("all")}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors duration-150 border ${
                   selectedAccountId === "all"
                     ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs"
                     : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100"
@@ -579,7 +579,7 @@ export default function QueuesPage() {
                   <button
                     key={acc.accountId}
                     onClick={() => setSelectedAccountId(acc.accountId)}
-                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all border ${
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors duration-150 border ${
                       isSelected
                         ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs font-semibold"
                         : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100"
@@ -620,7 +620,7 @@ export default function QueuesPage() {
               <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1">
                 <button
                   onClick={() => setSelectedPlatform("all")}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150 ${
                     selectedPlatform === "all"
                       ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold"
                       : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -632,7 +632,7 @@ export default function QueuesPage() {
                   <button
                     key={plat}
                     onClick={() => setSelectedPlatform(plat)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors duration-150 ${
                       selectedPlatform === plat
                         ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold"
                         : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -673,7 +673,7 @@ export default function QueuesPage() {
                 <button
                   onClick={() => setViewMode("table")}
                   title="Compact List View"
-                  className={`p-1.5 rounded-lg transition-all ${
+                  className={`p-1.5 rounded-lg transition-colors duration-150 ${
                     viewMode === "table"
                       ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
                       : "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
@@ -684,7 +684,7 @@ export default function QueuesPage() {
                 <button
                   onClick={() => setViewMode("cards")}
                   title="Timeline Cards View"
-                  className={`p-1.5 rounded-lg transition-all ${
+                  className={`p-1.5 rounded-lg transition-colors duration-150 ${
                     viewMode === "cards"
                       ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
                       : "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
@@ -695,7 +695,7 @@ export default function QueuesPage() {
                 <button
                   onClick={() => setViewMode("calendar")}
                   title="Calendar Schedule View"
-                  className={`p-1.5 rounded-lg transition-all ${
+                  className={`p-1.5 rounded-lg transition-colors duration-150 ${
                     viewMode === "calendar"
                       ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
                       : "text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
@@ -732,7 +732,7 @@ export default function QueuesPage() {
             {data?.totalQueued === 0 ? (
               <Link
                 href="/content"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-xs font-semibold shadow-xs transition-all"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-xs font-semibold shadow-xs transition-colors duration-150"
               >
                 <FolderSync className="w-4 h-4" />
                 <span>Go to Content Library</span>
@@ -785,7 +785,7 @@ export default function QueuesPage() {
             return (
               <div
                 key={post.id}
-                className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs hover:border-zinc-300 dark:hover:border-zinc-700 transition-all flex flex-col justify-between gap-4"
+                className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors duration-150 flex flex-col justify-between gap-4"
               >
                 {/* Header row: Account Badge, Platform Chips, Status & Scheduled Time */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-zinc-100 dark:border-zinc-800">
@@ -823,7 +823,7 @@ export default function QueuesPage() {
                             href={pl.platformPostUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className={`${badgeClasses} hover:brightness-110 hover:shadow-xs transition-all cursor-pointer`}
+                            className={`${badgeClasses} hover:brightness-110 hover:shadow-xs transition-colors duration-150 cursor-pointer`}
                             title={`Open published post on ${label}`}
                           >
                             {pl.profilePicture && (
@@ -922,7 +922,7 @@ export default function QueuesPage() {
                           href={m.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:border-zinc-300 transition-all shadow-2xs"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:border-zinc-300 transition-colors duration-150 shadow-2xs"
                         >
                           {m.type === "video" ? (
                             <Video className="w-3.5 h-3.5 text-rose-500" />
@@ -1002,7 +1002,7 @@ export default function QueuesPage() {
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-zinc-50 dark:bg-zinc-950/60 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 font-semibold uppercase text-[10px] tracking-wider">
+              <thead className="bg-zinc-50 dark:bg-zinc-950/60 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 font-medium text-[11px]">
                 <tr>
                   <th
                     onClick={() => handleSort("status")}
@@ -1172,7 +1172,7 @@ export default function QueuesPage() {
                                   href={pl.platformPostUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className={`${badgeClasses} hover:brightness-110 transition-all cursor-pointer`}
+                                  className={`${badgeClasses} hover:brightness-110 transition-colors duration-150 cursor-pointer`}
                                   title={`Open published post on ${label}`}
                                 >
                                   {pl.platform === "linkedin_page" && (

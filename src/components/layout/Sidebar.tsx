@@ -88,7 +88,7 @@ export function Sidebar() {
 
       {/* Navigation Links */}
       <nav className="flex-1 px-3 py-6 space-y-1">
-        <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+        <div className="px-3 pb-2 text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
           Navigation
         </div>
         {NAV_ITEMS.map((item) => {
@@ -102,7 +102,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-colors duration-150 ${
                 isActive
                   ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold border border-zinc-200 dark:border-zinc-700/60 shadow-xs"
                   : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100/60 dark:hover:bg-zinc-800/40"
@@ -125,13 +125,13 @@ export function Sidebar() {
           href="https://docs.zernio.com"
           target="_blank"
           rel="noreferrer"
-          className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-xs text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors group"
+          className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-xs text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors duration-150 group"
         >
-          <span className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          <span className="flex items-center gap-2 font-medium">
+            <KeyRound className="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200" />
             Zernio Docs API
           </span>
-          <ExternalLink className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100" />
+          <ExternalLink className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 transition-opacity" />
         </a>
       </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { Share2, RefreshCw, CheckCircle2, AlertCircle, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { useQueryClient } from "@tanstack/react-query";
@@ -10,6 +11,8 @@ export function Header() {
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const { resolvedTheme, toggleTheme } = useTheme();
   const queryClient = useQueryClient();
+  const pathname = usePathname();
+  const isDashboard = pathname === "/";
 
   const handleSync = async () => {
     setSyncing(true);
@@ -69,7 +72,7 @@ export function Header() {
           type="button"
           title={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} mode`}
           aria-label="Toggle theme"
-          className="p-2 min-h-[38px] min-w-[38px] rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 transition-all flex items-center justify-center active:scale-95"
+          className="p-2 min-h-[38px] min-w-[38px] rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors duration-150 flex items-center justify-center active:scale-95 cursor-pointer"
         >
           {resolvedTheme === "dark" ? (
             <Sun className="w-4 h-4 text-amber-400" />
@@ -78,18 +81,20 @@ export function Header() {
           )}
         </button>
 
-        {/* Sync Button */}
-        <button
-          onClick={handleSync}
-          disabled={syncing}
-          className="flex items-center gap-2 px-3 py-1.5 min-h-[38px] rounded-lg text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-all active:scale-95 disabled:opacity-60 shadow-sm"
-        >
-          <RefreshCw
-            className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`}
-          />
-          <span className="hidden sm:inline">Sync OneDrive</span>
-          <span className="sm:hidden">Sync</span>
-        </button>
+        {/* Global Sync Button (Shown on sub-pages; on Dashboard the primary toolbar hosts sync) */}
+        {!isDashboard && (
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="flex items-center gap-2 px-3 py-1.5 min-h-[38px] rounded-lg text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors duration-150 active:scale-95 disabled:opacity-60 shadow-xs cursor-pointer"
+          >
+            <RefreshCw
+              className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`}
+            />
+            <span className="hidden sm:inline">Sync OneDrive</span>
+            <span className="sm:hidden">Sync</span>
+          </button>
+        )}
       </div>
     </header>
   );

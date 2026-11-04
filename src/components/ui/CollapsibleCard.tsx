@@ -33,7 +33,7 @@ export function CollapsibleCard({
 
   return (
     <div
-      className={`bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm dark:shadow-xl transition-all overflow-hidden ${className}`}
+      className={`bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm dark:shadow-xl transition-colors duration-150 overflow-hidden ${className}`}
     >
       {/* Card Header (clickable on mobile to toggle, with desktop toggle option) */}
       <div className="p-4 sm:p-6 border-b border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
